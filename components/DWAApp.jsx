@@ -617,9 +617,10 @@ const css = `
     --green: #2d7a4f;
     --blue: #2563a8;
   }
-  html, body { height: 100%; width: 100%; overflow: hidden; }
+  html, body { height: 100%; height: 100dvh; width: 100%; overflow: hidden; }
   body { font-family: 'Oswald', sans-serif; background: var(--ink) url('/images/dark-bg.jpg') center center / cover no-repeat fixed; margin: 0; padding: 0; }
-  #root { height: 100%; width: 100%; }
+  #root { height: 100%; height: 100dvh; width: 100%; }
+  #dwa-app-root { height: 100vh; height: 100dvh; }
   @media (max-width: 380px) { :root { font-size: 13px; } }
   @media (min-width: 430px) { :root { font-size: 16px; } }
   .scroll { flex:1; overflow-y:auto; overflow-x:hidden; padding-bottom:20px; -webkit-overflow-scrolling: touch; }
@@ -2511,7 +2512,7 @@ export default function DWAApp() {
   return (
     <>
       <style>{css}</style>
-      <div id="dwa-app-root" style={{ maxWidth: 430, margin: "0 auto", height: "100vh", minHeight: "-webkit-fill-available", display: "flex", flexDirection: "column", background: "transparent", position: "relative", overflow: "hidden" }}>
+      <div id="dwa-app-root" style={{ maxWidth: 430, margin: "0 auto", height: "100dvh", minHeight: "-webkit-fill-available", display: "flex", flexDirection: "column", background: "transparent", position: "relative", overflow: "hidden" }}>
 
         {/* Top nav */}
         <div style={{ background: "var(--leather)", padding: "12px 16px", ...row("center", 0), justifyContent: "space-between", position: "relative", flexShrink: 0, zIndex: 1 }}>
@@ -2952,7 +2953,7 @@ export default function DWAApp() {
         </div>
 
         {/* Bottom tab bar */}
-        <div className="nav-glow" style={{ background: "var(--leather)", flexShrink: 0, position: "relative", zIndex: 1 }}>
+        <div className="nav-glow" style={{ background: "var(--leather)", flexShrink: 0, position: "relative", zIndex: 1, paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg,transparent,var(--gold),transparent)" }} />
           <div style={{ display: "flex", padding: "6px 4px 10px" }}>
             {TABS.map(t => {
