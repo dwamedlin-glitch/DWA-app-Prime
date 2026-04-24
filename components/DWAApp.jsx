@@ -646,6 +646,36 @@ const css = `
   @keyframes urgentPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
   .checkbox-custom { width: 20px; height: 20px; border-radius: 4px; border: 1.5px solid var(--seam); background: var(--leather3); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .checkbox-custom.checked { background: var(--gold); border-color: var(--gold2); }
+
+  /* ── LIGHT MODE ── */
+  .light-theme {
+    --ink: #f5f0e8;
+    --leather: #ffffff;
+    --leather2: #f9f5ee;
+    --leather3: #f0ebe0;
+    --leather4: #e8e0d0;
+    --seam: #d4c9b0;
+    --gold: #a06b18;
+    --gold2: #c98c2a;
+    --gold3: #b07a20;
+    --gold-glow: rgba(160,107,24,0.12);
+    --gold-dim: rgba(160,107,24,0.06);
+    --cream: #3a2f1e;
+    --cream2: #5a4a30;
+    --cream3: #8a7355;
+    --text: #2c1e0a;
+    --text2: #5a4a30;
+    --text3: #8a7a5e;
+    --red: #b03020;
+    --green: #1e6a3f;
+    --blue: #1a5090;
+  }
+  .light-theme body,
+  .light-theme #root { background: var(--ink); }
+  .light-theme input,
+  .light-theme textarea,
+  .light-theme select { color-scheme: light; }
+  .light-theme select option { background: #fff; color: var(--text); }
 `;
 
 export default function DWAApp() {
@@ -690,7 +720,7 @@ export default function DWAApp() {
   const [loginError, setLoginError] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(true);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
   const [confirmModal, setConfirmModal] = useState(null); // { title, message, onConfirm, danger }
   const [toastMsg, setToastMsg] = useState(null); // { message, onUndo }
   const [grievanceSubmitted, setGrievanceSubmitted] = useState(false);
@@ -760,6 +790,18 @@ export default function DWAApp() {
   const isCurrentUserBanned = bannedUsers.some(b => b.name === currentUserName);
 
   // Subscribe to Firestore floor posts
+  // Apply light/dark theme class to html element
+  useEffect(() => {
+    const html = document.documentElement;
+    if (darkMode) {
+      html.classList.remove("light-theme");
+      document.body.style.background = "";
+    } else {
+      html.classList.add("light-theme");
+      document.body.style.background = "#f5f0e8";
+    }
+  }, [darkMode]);
+
   useEffect(() => {
     let debounceTimer = null;
     const unsubscribe = subscribeToFloorPosts((posts) => {
