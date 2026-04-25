@@ -1,4 +1,4 @@
-/* DWA v1.2.1 */
+/* DWA v1.2.2 */
 import { useState, useEffect, useRef } from "react";
 import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers } from "../lib/firebase";
 
@@ -1056,6 +1056,19 @@ export default function DWAApp() {
     setGrievanceSubmitted(false); setIssueType(""); setDescription(""); setIncidentDate("");
     setIncidentTime(""); setIncidentLocation(""); setSupervisorName(""); setWitnesses("");
     setRemedy(""); setContractArticle(""); setPriorGrievance(false); setGrievanceError(false);
+  };
+
+  // ── Save documents to Firebase via API ──
+  const saveDocuments = async (docs) => {
+    try {
+      await fetch("/api/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documents: docs }),
+      });
+    } catch (e) {
+      console.log("Failed to save documents to Firebase:", e);
+    }
   };
 
   const filteredDocs = documents.filter(d =>
@@ -3058,13 +3071,18 @@ export default function DWAApp() {
                   onClick={() => {
                     const now = new Date();
                     const updated = now.toLocaleDateString("en-US", { month: "short", year: "numeric" });
-                    setDocuments(prev => [...prev, {
+                    const newDoc = {
                       id: Date.now(), name: newDocName, category: newDocCat,
                       size: newDocFile?.size || "—", updated,
                       desc: newDocDesc || undefined,
                       fileUrl: newDocFile?.url || undefined,
                       fileType: newDocFile?.type || undefined,
-                    }]);
+                    };
+                    setDocuments(prev => {
+                      const updated = [...prev, newDoc];
+                      saveDocuments(updated);
+                      return updated;
+                    });
                     setNewDocName(""); setNewDocDesc(""); setNewDocFile(null);
                     saveFlash(() => {});
                   }}
@@ -3087,7 +3105,7 @@ export default function DWAApp() {
                       <div style={{ ...f(10, 400, "serif"), color: "var(--text3)", fontStyle: "italic" }}>{d.category} · {d.size} · {d.updated}</div>
                     </div>
                     {d.id > 2 && (
-                      <button onClick={() => setConfirmModal({ title: "Delete Document", message: `Delete "${d.name}"? This cannot be undone.`, danger: true, onConfirm: () => { const removed = d; setDocuments(prev => prev.filter(x => x.id !== d.id)); setToastMsg({ message: `"${d.name}" deleted`, onUndo: () => setDocuments(prev => [...prev, removed]) }); } })}
+                      <button onClick={() => setConfirmModal({ title: "Delete Document", message: `Delete "${d.name}"? This cannot be undone.`, danger: true, onConfirm: () => { const removed = d; setDocuments(prev => { const updated = prev.filter(x => x.id !== d.id); saveDocuments(updated); return updated; }); setToastMsg({ message: `"${d.name}" deleted`, onUndo: () => setDocuments(prev => { const restored = [...prev, removed]; saveDocuments(restored); return restored; }) }); } })}
                         style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "6px 10px", cursor: "pointer", flexShrink: 0 }}>
                         DEL
                       </button>
