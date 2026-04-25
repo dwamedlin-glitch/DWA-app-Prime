@@ -147,8 +147,7 @@ const GRIEVANCE_FORM_HTML = `<!DOCTYPE html>
 const DOCUMENTS_DATA = [
   { id: 1, name: "Union Contract 2025–2028", category: "Contract & Bylaws", size: "2.4 MB", updated: "Sept 2025" },
   { id: 2, name: "Union Bylaws", category: "Contract & Bylaws", size: "890 KB", updated: "Mar 2024" },
-  { id: 3, name: "Grievance Form (Blank)", category: "Forms", size: "—", updated: "Jan 2025", desc: "Print & fill out by hand", fileUrl: null, formHtml: GRIEVANCE_FORM_HTML },
-  { id: 4, name: "Union Meeting Flyer", category: "Forms", size: "—", updated: "Live", desc: "May 15 Ratification Vote", formHtml: `<!DOCTYPE html>
+  { id: 3, name: "Union Meeting Flyer", category: "Forms", size: "—", updated: "Live", desc: "May 15 Ratification Vote", formHtml: `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8"/>
