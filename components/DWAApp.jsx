@@ -2688,7 +2688,6 @@ export default function DWAApp() {
 
   const TABS = [
     { id: "home", label: "Home", icon: "home" },
-    { id: "announcements", label: "News", icon: "bell" },
     { id: "documents", label: "Docs", icon: "file" },
     { id: "zoom", label: "Zoom", icon: "video" },
     { id: "minutes", label: "Minutes", icon: "notes" },
