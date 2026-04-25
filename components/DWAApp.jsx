@@ -1582,6 +1582,59 @@ export default function DWAApp() {
       );
     }
 
+    if (sub.type === "doc-preview") {
+      const d = sub.data;
+      const isPdf = (d.fileType || "").toLowerCase() === "pdf";
+      const isImage = ["png","jpg","jpeg","gif","webp"].includes((d.fileType || "").toLowerCase());
+      return (
+        <><style>{css}</style>
+          <div style={{ maxWidth: 430, margin: "0 auto", height: "100vh", minHeight: "-webkit-fill-available", display: "flex", flexDirection: "column", background: "var(--ink)", position: "relative", overflow: "hidden" }}>
+            <div style={{ background: "var(--leather)", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", flexShrink: 0 }}>
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg,transparent,var(--gold),transparent)" }} />
+              <button onClick={() => setSub(null)} style={{ ...row("center", 6), color: "var(--gold)", background: "none", border: "none", cursor: "pointer", ...f(12, 700), letterSpacing: ".1em" }}>← BACK</button>
+              <span style={{ ...f(11, 600), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".15em", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</span>
+              <button onClick={() => { setSub(null); setTab("home"); }} style={{ width: 30, height: 30, background: "none", border: "none", cursor: "pointer", color: "var(--text3)" }}>
+                <SectionIcon icon="home" size={16} />
+              </button>
+            </div>
+            {/* Preview area */}
+            <div style={{ flex: 1, overflow: "auto", display: "flex", alignItems: "center", justifyContent: "center", background: darkMode ? "#1a1610" : "#e8e4dc", padding: 16 }}>
+              {isImage ? (
+                <img src={d.fileUrl} alt={d.name} style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 8, boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }} />
+              ) : isPdf ? (
+                <iframe src={d.fileUrl} style={{ width: "100%", height: "100%", border: "none", borderRadius: 8, background: "#fff" }} title={d.name} />
+              ) : (
+                <div style={{ textAlign: "center", ...col(12), alignItems: "center", padding: "40px 20px" }}>
+                  <div style={{ width: 80, height: 90, borderRadius: 12, background: "var(--leather2)", border: "1px solid var(--seam)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 16 }}>
+                    <SectionIcon icon="file" size={28} />
+                    <span style={{ ...f(11, 800), color: "var(--text3)", letterSpacing: ".06em" }}>{(d.fileType || "FILE").toUpperCase()}</span>
+                  </div>
+                  <div style={{ ...f(16, 600), color: "var(--cream)", marginBottom: 4 }}>{d.name}</div>
+                  <div style={{ ...f(12, 400, "serif"), color: "var(--text3)", fontStyle: "italic", marginBottom: 4 }}>{d.category} · {d.size}</div>
+                  <div style={{ ...f(12, 400, "serif"), color: "var(--text3)", fontStyle: "italic" }}>Preview not available for this file type.</div>
+                  <div style={{ ...f(12, 400, "serif"), color: "var(--text3)", fontStyle: "italic" }}>Download to view.</div>
+                </div>
+              )}
+            </div>
+            {/* Download bar */}
+            <div style={{ flexShrink: 0, borderTop: "1px solid var(--seam)", background: "var(--leather)", padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ ...f(13, 600), color: "var(--text)" }}>{d.name}</div>
+                <div style={{ ...f(11, 400, "serif"), color: "var(--text3)", fontStyle: "italic", marginTop: 2 }}>{d.category} · {d.size} · Updated {d.updated}</div>
+              </div>
+              <a
+                href={d.fileUrl} download={d.name}
+                style={{ padding: "10px 18px", background: "linear-gradient(135deg,#a06b18,#c9922a)", border: "1px solid var(--gold)", borderRadius: 8, color: "#1a0f00", ...f(12, 700, 'bebas'), letterSpacing: ".1em", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, flexShrink: 0, textDecoration: "none" }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                DOWNLOAD
+              </a>
+            </div>
+          </div>
+        </>
+      );
+    }
+
     if (sub.type === "bylaws") {
       return (
         <><style>{css}</style>
@@ -2377,13 +2430,14 @@ export default function DWAApp() {
             <div key={d.id} style={{ ...card({ padding: "0", overflow: "hidden" }) }}>
               {/* Top row */}
               <div
-                className={(isReadable || hasForm) ? "tile" : ""}
+                className={(isReadable || hasForm || hasFile) ? "tile" : ""}
                 onClick={() => {
                   if (d.id === 1) setSub({ type: "cba" });
                   else if (d.id === 2) setSub({ type: "bylaws" });
                   else if (hasForm) setSub({ type: "form-preview", data: d });
+                  else if (hasFile) setSub({ type: "doc-preview", data: d });
                 }}
-                style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 13, cursor: (isReadable || hasForm) ? "pointer" : "default" }}
+                style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 13, cursor: (isReadable || hasForm || hasFile) ? "pointer" : "default" }}
               >
                 {/* File type badge */}
                 <div style={{
@@ -2452,15 +2506,6 @@ export default function DWAApp() {
                   <div style={{ flex: 1, padding: "10px 8px", ...row("center", 6), justifyContent: "center", color: "var(--text3)", ...f(11, 500), letterSpacing: ".08em", fontStyle: "italic", fontFamily: "'Source Serif 4', serif" }}>
                     {isReadable ? "In-app only" : "No file attached"}
                   </div>
-                )}
-                {isAdmin && !isReadable && (
-                  <button
-                    onClick={() => setConfirmModal({ title: "Delete Document", message: `Delete "${d.name}"? This cannot be undone.`, danger: true, onConfirm: () => { setDocuments(prev => prev.filter(x => x.id !== d.id)); setToastMsg({ message: `"${d.name}" deleted` }); } })}
-                    style={{ padding: "10px 12px", background: "none", border: "none", borderLeft: "1px solid var(--seam)", cursor: "pointer", ...row("center", 5), justifyContent: "center", color: "#c0504d", ...f(11, 700), letterSpacing: ".1em" }}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                    DELETE
-                  </button>
                 )}
               </div>
             </div>
@@ -3042,7 +3087,7 @@ export default function DWAApp() {
                       <div style={{ ...f(10, 400, "serif"), color: "var(--text3)", fontStyle: "italic" }}>{d.category} · {d.size} · {d.updated}</div>
                     </div>
                     {d.id > 4 && (
-                      <button onClick={() => setDocuments(prev => prev.filter(x => x.id !== d.id))}
+                      <button onClick={() => setConfirmModal({ title: "Delete Document", message: `Delete "${d.name}"? This cannot be undone.`, danger: true, onConfirm: () => { const removed = d; setDocuments(prev => prev.filter(x => x.id !== d.id)); setToastMsg({ message: `"${d.name}" deleted`, onUndo: () => setDocuments(prev => [...prev, removed]) }); } })}
                         style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "6px 10px", cursor: "pointer", flexShrink: 0 }}>
                         DEL
                       </button>
