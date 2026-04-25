@@ -3086,7 +3086,7 @@ export default function DWAApp() {
                       <div style={{ ...f(13, 600), color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</div>
                       <div style={{ ...f(10, 400, "serif"), color: "var(--text3)", fontStyle: "italic" }}>{d.category} · {d.size} · {d.updated}</div>
                     </div>
-                    {d.id > 4 && (
+                    {d.id > 2 && (
                       <button onClick={() => setConfirmModal({ title: "Delete Document", message: `Delete "${d.name}"? This cannot be undone.`, danger: true, onConfirm: () => { const removed = d; setDocuments(prev => prev.filter(x => x.id !== d.id)); setToastMsg({ message: `"${d.name}" deleted`, onUndo: () => setDocuments(prev => [...prev, removed]) }); } })}
                         style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "6px 10px", cursor: "pointer", flexShrink: 0 }}>
                         DEL
