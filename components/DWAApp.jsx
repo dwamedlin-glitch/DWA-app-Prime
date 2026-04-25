@@ -697,6 +697,37 @@ const css = `
   .light-theme .gold-rule { background: linear-gradient(90deg, transparent, var(--seam), transparent); }
   .light-theme .checkbox-custom { border-color: var(--seam); background: #fff; }
   .light-theme .checkbox-custom.checked { background: var(--gold); border-color: var(--gold2); }
+
+  /* ── SKELETON SHIMMER ── */
+  @keyframes skeleton-shimmer {
+    0% { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+  .skeleton-line {
+    height: 14px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--leather2) 25%, var(--leather3) 50%, var(--leather2) 75%);
+    background-size: 800px 100%;
+    animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  }
+  .skeleton-circle {
+    border-radius: 50%;
+    background: linear-gradient(90deg, var(--leather2) 25%, var(--leather3) 50%, var(--leather2) 75%);
+    background-size: 800px 100%;
+    animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  }
+  .skeleton-rect {
+    border-radius: 10px;
+    background: linear-gradient(90deg, var(--leather2) 25%, var(--leather3) 50%, var(--leather2) 75%);
+    background-size: 800px 100%;
+    animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  }
+
+  /* ── OFFLINE BANNER ── */
+  @keyframes offline-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
 `;
 
 export default function DWAApp() {
@@ -760,6 +791,9 @@ export default function DWAApp() {
   const [priorGrievance, setPriorGrievance] = useState(false);
   const [grievanceError, setGrievanceError] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+  const APP_VERSION = "1.2.0";
   const [myGrievances] = useState([
     { id: 1, type: "Scheduling or overtime issue", date: "Apr 3, 2026", status: "review" },
     { id: 2, type: "Wage or pay dispute", date: "Feb 18, 2026", status: "resolved" },
@@ -878,6 +912,32 @@ export default function DWAApp() {
   const [grievanceEmails, setGrievanceEmails] = useState([]);
   // CBA Articles from API (falls back to hardcoded CBA_ARTICLES)
   const [cbaArticlesData, setCbaArticlesData] = useState(CBA_ARTICLES);
+
+  // ── OFFLINE DETECTION ──
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => setIsOffline(false);
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    return () => {
+      window.removeEventListener("offline", goOffline);
+      window.removeEventListener("online", goOnline);
+    };
+  }, []);
+
+  // ── UPDATE BANNER (show once per new version) ──
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem("dwa_last_version");
+      if (seen !== APP_VERSION) {
+        setShowUpdateBanner(true);
+      }
+    } catch (e) { /* ignore */ }
+  }, []);
+  const dismissUpdateBanner = () => {
+    setShowUpdateBanner(false);
+    try { localStorage.setItem("dwa_last_version", APP_VERSION); } catch (e) { /* ignore */ }
+  };
 
   // ── STYLE HELPERS ──
   const f = (size, weight = 400, font = 'oswald') => ({
@@ -1151,6 +1211,114 @@ export default function DWAApp() {
     );
   };
 
+  // ── LOADING SKELETON COMPONENTS ──
+  const SkeletonCard = ({ lines = 3, avatar = false }) => (
+    <div style={{ ...card({ padding: "16px 14px", marginBottom: 12 }), display: "flex", gap: 12, alignItems: "flex-start" }}>
+      {avatar && <div className="skeleton-circle" style={{ width: 38, height: 38, flexShrink: 0 }} />}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="skeleton-line" style={{ width: "60%", height: 16 }} />
+        {Array.from({ length: lines - 1 }).map((_, i) => (
+          <div key={i} className="skeleton-line" style={{ width: i === lines - 2 ? "40%" : "90%", height: 12 }} />
+        ))}
+      </div>
+    </div>
+  );
+
+  const SkeletonList = ({ count = 4, avatar = false }) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <SkeletonCard key={i} lines={i % 2 === 0 ? 3 : 2} avatar={avatar} />
+      ))}
+    </div>
+  );
+
+  const SkeletonGrid = ({ count = 6 }) => (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="skeleton-rect" style={{ height: 90 }} />
+      ))}
+    </div>
+  );
+
+  // ── OFFLINE BANNER ──
+  const OfflineBanner = () => {
+    if (!isOffline) return null;
+    return (
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 10000, background: "linear-gradient(135deg, #8b2500, #a03000)", padding: "8px 16px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, animation: "offline-pulse 2s ease-in-out infinite" }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+        <span style={{ ...f(11, 600), color: "#fff", letterSpacing: ".06em", textTransform: "uppercase" }}>You're offline — some features may be unavailable</span>
+      </div>
+    );
+  };
+
+  // ── UPDATE BANNER ──
+  const UpdateBanner = () => {
+    if (!showUpdateBanner || !loggedIn) return null;
+    return (
+      <div style={{ position: "fixed", top: isOffline ? 36 : 0, left: 0, right: 0, zIndex: 9997, background: "linear-gradient(135deg, #1a3a1a, #2d5a2d)", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, borderBottom: "1px solid rgba(100,200,100,0.3)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16 }}>🎉</span>
+          <span style={{ ...f(11, 600), color: "#a8e6a8", letterSpacing: ".06em", textTransform: "uppercase" }}>App updated to v{APP_VERSION}</span>
+        </div>
+        <button onClick={dismissUpdateBanner} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 6, padding: "3px 10px", ...f(10, 600, 'bebas'), color: "#a8e6a8", cursor: "pointer", letterSpacing: ".08em" }}>DISMISS</button>
+      </div>
+    );
+  };
+
+  // ── TERMS OF USE PAGE ──
+  const TermsPage = () => (
+    <div style={{ ...col(0), height: "100%", overflow: "hidden" }}>
+      <div style={{ ...row("center", 10), padding: "16px 14px 10px", borderBottom: "1px solid var(--seam)" }}>
+        <button onClick={() => setSub(null)} style={{ background: "none", border: "none", color: "var(--gold)", cursor: "pointer", ...f(22, 400, 'bebas'), letterSpacing: ".06em" }}>← BACK</button>
+        <div style={{ ...f(20, 400, 'bebas'), color: "var(--cream)", letterSpacing: ".08em" }}>TERMS OF USE</div>
+      </div>
+      <div className="scroll" style={{ flex: 1, overflowY: "auto", padding: "20px 16px" }}>
+        <div style={{ ...f(13, 400, 'serif'), color: "var(--text2)", lineHeight: 1.8, fontStyle: "italic" }}>
+          <p style={{ marginBottom: 16 }}><strong style={{ color: "var(--gold)", fontStyle: "normal" }}>Effective Date:</strong> January 1, 2026</p>
+          <p style={{ marginBottom: 16 }}>Welcome to the Dairy Workers Association (DWA) mobile application. By accessing or using this app, you agree to the following terms and conditions.</p>
+          <p style={{ marginBottom: 8 }}><strong style={{ color: "var(--gold)", fontStyle: "normal" }}>1. Use of the App</strong></p>
+          <p style={{ marginBottom: 16 }}>This app is provided exclusively for DWA members, stewards, and authorized officers. Unauthorized access is prohibited. You agree to use this app only for lawful purposes related to union activities.</p>
+          <p style={{ marginBottom: 8 }}><strong style={{ color: "var(--gold)", fontStyle: "normal" }}>2. Account Responsibility</strong></p>
+          <p style={{ marginBottom: 16 }}>You are responsible for maintaining the confidentiality of your login credentials. Notify your steward immediately if you suspect unauthorized use of your account.</p>
+          <p style={{ marginBottom: 8 }}><strong style={{ color: "var(--gold)", fontStyle: "normal" }}>3. Content & Conduct</strong></p>
+          <p style={{ marginBottom: 16 }}>All posts, messages, and content shared through The Floor and other features must comply with DWA's code of conduct. Harassment, discrimination, or threats will result in suspension or ban.</p>
+          <p style={{ marginBottom: 8 }}><strong style={{ color: "var(--gold)", fontStyle: "normal" }}>4. Intellectual Property</strong></p>
+          <p style={{ marginBottom: 16 }}>All materials in this app, including contract documents, bylaws, and educational content, are the property of the Dairy Workers Association and may not be reproduced without authorization.</p>
+          <p style={{ marginBottom: 8 }}><strong style={{ color: "var(--gold)", fontStyle: "normal" }}>5. Modifications</strong></p>
+          <p style={{ marginBottom: 16 }}>DWA reserves the right to modify these terms at any time. Continued use of the app constitutes acceptance of any changes.</p>
+          <p style={{ marginBottom: 16 }}><strong style={{ color: "var(--gold)", fontStyle: "normal" }}>Contact:</strong> For questions about these terms, contact your shop steward or email info@dwa1953.org.</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── PRIVACY POLICY PAGE ──
+  const PrivacyPage = () => (
+    <div style={{ ...col(0), height: "100%", overflow: "hidden" }}>
+      <div style={{ ...row("center", 10), padding: "16px 14px 10px", borderBottom: "1px solid var(--seam)" }}>
+        <button onClick={() => setSub(null)} style={{ background: "none", border: "none", color: "var(--gold)", cursor: "pointer", ...f(22, 400, 'bebas'), letterSpacing: ".06em" }}>← BACK</button>
+        <div style={{ ...f(20, 400, 'bebas'), color: "var(--cream)", letterSpacing: ".08em" }}>PRIVACY POLICY</div>
+      </div>
+      <div className="scroll" style={{ flex: 1, overflowY: "auto", padding: "20px 16px" }}>
+        <div style={{ ...f(13, 400, 'serif'), color: "var(--text2)", lineHeight: 1.8, fontStyle: "italic" }}>
+          <p style={{ marginBottom: 16 }}><strong style={{ color: "var(--gold)", fontStyle: "normal" }}>Effective Date:</strong> January 1, 2026</p>
+          <p style={{ marginBottom: 16 }}>The Dairy Workers Association ("DWA", "we", "us") is committed to protecting the privacy of our members. This policy explains how we collect, use, and safeguard your information.</p>
+          <p style={{ marginBottom: 8 }}><strong style={{ color: "var(--gold)", fontStyle: "normal" }}>1. Information We Collect</strong></p>
+          <p style={{ marginBottom: 16 }}>We collect your name, email address, facility location, and shift information for the purpose of union communication and representation. Posts made on The Floor are visible to other members.</p>
+          <p style={{ marginBottom: 8 }}><strong style={{ color: "var(--gold)", fontStyle: "normal" }}>2. How We Use Your Information</strong></p>
+          <p style={{ marginBottom: 16 }}>Your information is used exclusively for union business: meeting notifications, grievance processing, seniority tracking, and member communication. We do not sell or share your personal data with third parties.</p>
+          <p style={{ marginBottom: 8 }}><strong style={{ color: "var(--gold)", fontStyle: "normal" }}>3. Data Security</strong></p>
+          <p style={{ marginBottom: 16 }}>We implement reasonable security measures to protect your personal information. However, no electronic transmission or storage method is 100% secure.</p>
+          <p style={{ marginBottom: 8 }}><strong style={{ color: "var(--gold)", fontStyle: "normal" }}>4. Your Rights</strong></p>
+          <p style={{ marginBottom: 16 }}>You have the right to access, correct, or request deletion of your personal data. Contact your steward or email privacy@dwa1953.org to exercise these rights.</p>
+          <p style={{ marginBottom: 8 }}><strong style={{ color: "var(--gold)", fontStyle: "normal" }}>5. Grievance Records</strong></p>
+          <p style={{ marginBottom: 16 }}>Grievance submissions are confidential and shared only with authorized union representatives and, when necessary, management representatives involved in the grievance process.</p>
+          <p style={{ marginBottom: 16 }}><strong style={{ color: "var(--gold)", fontStyle: "normal" }}>Contact:</strong> For privacy concerns, contact privacy@dwa1953.org.</p>
+        </div>
+      </div>
+    </div>
+  );
+
   // ── SETTINGS PANEL (slide-out) ──
   const SettingsPanel2 = () => {
     if (!showSettingsPanel) return null;
@@ -1192,6 +1360,11 @@ export default function DWAApp() {
               <SectionIcon icon="logout" size={15} /> SIGN OUT
             </button>
           </div>
+          <div style={{ marginTop: 20, display: "flex", gap: 16, justifyContent: "center" }}>
+            <span onClick={() => { setShowSettingsPanel(false); setSub({ type: "terms" }); }} style={{ ...f(11, 400, 'serif'), color: "var(--text3)", cursor: "pointer", textDecoration: "underline", fontStyle: "italic" }}>Terms of Use</span>
+            <span onClick={() => { setShowSettingsPanel(false); setSub({ type: "privacy" }); }} style={{ ...f(11, 400, 'serif'), color: "var(--text3)", cursor: "pointer", textDecoration: "underline", fontStyle: "italic" }}>Privacy Policy</span>
+          </div>
+          <div style={{ ...f(10, 400, 'serif'), color: "var(--text3)", textAlign: "center", marginTop: 12, fontStyle: "italic", opacity: 0.6 }}>DWA App v{APP_VERSION}</div>
         </div>
       </div>
     );
@@ -1324,6 +1497,24 @@ export default function DWAApp() {
 
   // ── SUB SCREENS ──
   if (sub) {
+    if (sub.type === "terms") {
+      return (
+        <><style>{css}</style>
+          <div style={{ maxWidth: 430, margin: "0 auto", height: "100vh", minHeight: "-webkit-fill-available", display: "flex", flexDirection: "column", background: "var(--ink)", position: "relative", overflow: "hidden" }}>
+            <TermsPage />
+          </div>
+        </>
+      );
+    }
+    if (sub.type === "privacy") {
+      return (
+        <><style>{css}</style>
+          <div style={{ maxWidth: 430, margin: "0 auto", height: "100vh", minHeight: "-webkit-fill-available", display: "flex", flexDirection: "column", background: "var(--ink)", position: "relative", overflow: "hidden" }}>
+            <PrivacyPage />
+          </div>
+        </>
+      );
+    }
     if (sub.type === "form-preview") {
       const d = sub.data;
       return (
@@ -1901,6 +2092,23 @@ export default function DWAApp() {
         <div className="gold-rule" style={{ marginTop: 12, marginBottom: 0 }} />
       </div>
 
+      {/* Section 7 Welcome */}
+      <div style={{ ...card({ padding: "16px 14px", marginBottom: 16, borderLeft: "3px solid var(--gold)" }) }}>
+        <div style={{ ...row("center", 8), marginBottom: 8 }}>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg, #a06b18, #c9922a)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <SectionIcon icon="shield" size={16} />
+          </div>
+          <div style={{ ...f(13, 700), color: "var(--gold)", letterSpacing: ".06em" }}>YOUR RIGHTS UNDER THE LAW</div>
+        </div>
+        <div style={{ ...f(12, 400, 'serif'), color: "var(--text2)", lineHeight: 1.7, fontStyle: "italic" }}>
+          <strong style={{ color: "var(--cream)", fontStyle: "normal" }}>Section 7 of the National Labor Relations Act</strong> guarantees that
+          "Employees shall have the right to self-organization, to form, join, or assist labor organizations,
+          to bargain collectively through representatives of their own choosing, and to engage in other concerted
+          activities for the purpose of collective bargaining or other mutual aid or protection."
+        </div>
+        <div style={{ ...f(10, 400, 'serif'), color: "var(--text3)", marginTop: 8 }}>This is your space. Speak freely. We stand together.</div>
+      </div>
+
       {/* New post */}
       {isCurrentUserBanned ? (
         <div style={{ ...card({ padding: "16px", marginBottom: 20, borderLeft: "3px solid var(--red)" }) }}>
@@ -1927,7 +2135,14 @@ export default function DWAApp() {
       )}
 
       {/* Posts feed */}
-      {floorPosts.map(post => (
+      {floorLoading ? (
+        <SkeletonList count={3} avatar={true} />
+      ) : floorPosts.length === 0 ? (
+        <div style={{ ...card({ padding: "24px", textAlign: "center" }) }}>
+          <div style={{ ...f(14, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", lineHeight: 1.6 }}>No posts yet. Be the first to start a conversation.</div>
+        </div>
+      ) : (
+      floorPosts.map(post => (
         <div key={post.id} style={{ ...card({ padding: "14px", marginBottom: 12 }) }}>
           {/* Post header */}
           <div style={{ ...row("center", 8), marginBottom: 8 }}>
@@ -2005,31 +2220,9 @@ export default function DWAApp() {
             </div>
           )}
         </div>
-      ))}
+      )))}
 
-      {floorLoading && (
-        <div style={{ ...col(12), padding: "0" }}>
-          {[1, 2, 3].map(i => (
-            <div key={i} style={{ ...card({ padding: "14px", marginBottom: 12 }), opacity: 0.5 }}>
-              <div style={{ ...row("center", 8), marginBottom: 8 }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--leather3)" }} />
-                <div style={{ flex: 1, ...col(4) }}>
-                  <div style={{ width: 100, height: 12, background: "var(--leather3)", borderRadius: 4 }} />
-                  <div style={{ width: 60, height: 10, background: "var(--leather3)", borderRadius: 4 }} />
-                </div>
-              </div>
-              <div style={{ width: "90%", height: 12, background: "var(--leather3)", borderRadius: 4, marginBottom: 6 }} />
-              <div style={{ width: "70%", height: 12, background: "var(--leather3)", borderRadius: 4 }} />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {!floorLoading && floorPosts.length === 0 && (
-        <div style={{ textAlign: "center", padding: "40px 20px" }}>
-          <div style={{ ...f(14, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>No posts yet. Be the first to start a conversation.</div>
-        </div>
-      )}
+      {!floorLoading && floorPosts.length === 0 && null}
     </div>
   );
 
@@ -2978,6 +3171,8 @@ export default function DWAApp() {
       <SettingsPanel2 />
       <ConfirmModal2 />
       <Toast2 />
+      <OfflineBanner />
+      <UpdateBanner />
     </>
   );
 }
