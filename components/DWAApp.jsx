@@ -896,7 +896,7 @@ export default function DWAApp() {
           // We need to update STEWARDS-like usage — set a stewards state
           setStewardsData(mapped);
         }
-        if (data.documents) setDocuments(data.documents);
+        if (data.documents) setDocuments(data.documents.filter(d => d.name !== "Grievance Form (Blank)"));
         if (data.grievanceEmails) setGrievanceEmails(data.grievanceEmails);
         if (data.cbaArticles) setCbaArticlesData(data.cbaArticles);
       })
