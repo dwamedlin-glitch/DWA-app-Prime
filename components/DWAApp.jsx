@@ -949,9 +949,23 @@ export default function DWAApp() {
   const card = (extra = {}) => ({
     background: "var(--leather2)", borderRadius: 10,
     border: "1px solid var(--seam)",
-    boxShadow: "0 4px 16px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.03)",
+    boxShadow: darkMode ? "0 4px 16px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.03)" : "0 2px 8px rgba(0,0,0,0.06), 0 1px 0 rgba(255,255,255,0.6)",
     ...extra,
   });
+  const tileStyle = () => darkMode ? {
+    background: "linear-gradient(160deg, #1c1208 0%, #110d05 100%)",
+    border: "1.5px solid rgba(61,46,18,0.9)",
+    boxShadow: "0 2px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03)",
+  } : {
+    background: "linear-gradient(160deg, #fff 0%, #f8f4ed 100%)",
+    border: "1.5px solid #d4c9a8",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.8)",
+  };
+  const tileIconStyle = () => darkMode ? {
+    background: "rgba(201,146,42,0.08)", border: "1px solid rgba(201,146,42,0.15)",
+  } : {
+    background: "rgba(139,94,16,0.08)", border: "1px solid rgba(139,94,16,0.18)",
+  };
   const inp = (err = false) => ({
     width: "100%", padding: "12px 14px",
     background: "var(--leather3)",
@@ -1939,13 +1953,11 @@ export default function DWAApp() {
           { label: "The Floor", sub: "Talk with your union", icon: "message", action: () => setTab("theFloor") },
         ].map(q => (
           <div key={q.label} className="tile" onClick={q.action} style={{
-            background: "linear-gradient(160deg, #1c1208 0%, #110d05 100%)",
-            border: "1.5px solid rgba(61,46,18,0.9)",
+            ...tileStyle(),
             borderRadius: 10, padding: "16px 14px",
-            boxShadow: "0 2px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03)",
             display: "flex", flexDirection: "column", gap: 10,
           }}>
-            <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(201,146,42,0.08)", border: "1px solid rgba(201,146,42,0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gold)" }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, ...tileIconStyle(), display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gold)" }}>
               <SectionIcon icon={q.icon} size={22} />
             </div>
             <div>
@@ -2185,7 +2197,7 @@ export default function DWAApp() {
               {post.replies.map(reply => (
                 <div key={reply.id} style={{ marginBottom: 10, paddingTop: 6 }}>
                   <div style={{ ...row("center", 6), marginBottom: 4 }}>
-                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#1c1208", border: "1px solid #3d3218", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: darkMode ? "#1c1208" : "#f0ebe0", border: darkMode ? "1px solid #3d3218" : "1px solid #d0c5a8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <span style={{ ...f(9, 600), color: "#c4a44e" }}>{getInitials(reply.author)}</span>
                     </div>
                     <span style={{ ...f(12, 600), color: "var(--cream)" }}>{reply.author}</span>
@@ -2649,13 +2661,13 @@ export default function DWAApp() {
               { icon: "shield", label: "Update Seniority", action: () => setAdminSection("seniority") },
             ].map(qa => (
               <div key={qa.label} onClick={qa.action} className="tile" style={{
-                background: "linear-gradient(160deg, #1c1208 0%, #110d05 100%)",
-                border: "1.5px solid rgba(61,46,18,0.9)",
+                ...tileStyle(),
+                
                 borderRadius: 10, padding: "14px",
-                boxShadow: "0 2px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)",
+                
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center",
               }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(201,146,42,0.08)", border: "1px solid rgba(201,146,42,0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gold)" }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, ...tileIconStyle(), display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gold)" }}>
                   <SectionIcon icon={qa.icon} size={18} />
                 </div>
                 <div style={{ ...f(12, 600, "bebas"), color: "var(--cream)", letterSpacing: ".05em" }}>{qa.label}</div>
@@ -2676,13 +2688,13 @@ export default function DWAApp() {
               ...(isSuper ? [{ icon: "shield", label: "Manage Officials", action: () => setAdminSection("accounts") }] : []),
             ].map(qa => (
               <div key={qa.label} onClick={qa.action} className="tile" style={{
-                background: "linear-gradient(160deg, #1c1208 0%, #110d05 100%)",
-                border: "1.5px solid rgba(61,46,18,0.9)",
+                ...tileStyle(),
+                
                 borderRadius: 10, padding: "14px",
-                boxShadow: "0 2px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)",
+                
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center",
               }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(201,146,42,0.08)", border: "1px solid rgba(201,146,42,0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gold)" }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, ...tileIconStyle(), display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gold)" }}>
                   <SectionIcon icon={qa.icon} size={18} />
                 </div>
                 <div style={{ ...f(12, 600, "bebas"), color: "var(--cream)", letterSpacing: ".05em" }}>{qa.label}</div>
