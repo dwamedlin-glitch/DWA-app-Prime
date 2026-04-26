@@ -1064,8 +1064,14 @@ export default function DWAApp() {
   // ── Save documents to Firestore ──
   const saveDocuments = async (docs) => {
     try {
-      await saveUploadedDocuments(docs);
-    } catch (e) { console.log("Failed to save documents:", e); }
+      // Strip undefined values — Firestore rejects them
+      const cleanDocs = docs.map(d => {
+        const clean = {};
+        Object.keys(d).forEach(k => { if (d[k] !== undefined) clean[k] = d[k]; });
+        return clean;
+      });
+      await saveUploadedDocuments(cleanDocs);
+    } catch (e) { console.error("Failed to save documents:", e); }
   };
   // ── Save announcements to Firestore ──
   const saveAnnouncements = async (anns) => {
