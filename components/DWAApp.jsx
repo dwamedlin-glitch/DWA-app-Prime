@@ -825,6 +825,10 @@ export default function DWAApp() {
   const [newStewardName, setNewStewardName] = useState("");
   const [newStewardPhone, setNewStewardPhone] = useState("");
   const [newStewardDept, setNewStewardDept] = useState("Jersey City");
+  const [newContactName, setNewContactName] = useState("");
+  const [newContactTitle, setNewContactTitle] = useState("Shop Steward");
+  const [newContactDept, setNewContactDept] = useState("");
+  const [newContactPhone, setNewContactPhone] = useState("");
   const [newStewardTitle, setNewStewardTitle] = useState("Shop Steward");
 
   // ── THE FLOOR (Discussion Forum) ──
@@ -1916,7 +1920,7 @@ export default function DWAApp() {
     if (sub.type === "contact") return (
       <><style>{css}</style>
         <div style={{ maxWidth: 430, margin: "0 auto", height: "100vh", minHeight: "-webkit-fill-available", display: "flex", flexDirection: "column", background: "var(--ink)" }}>
-          <BackBar title="Union Contacts" />
+          <BackBar title="DWA Contacts" />
           <div className="scroll rise" style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ ...card({ padding: "13px 16px", borderLeft: "3px solid var(--gold)" }) }}>
               <div style={{ ...f(13, 400, 'serif'), color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic" }}>
@@ -2051,7 +2055,7 @@ export default function DWAApp() {
         {[
           { label: "Announcements", sub: "News & updates", icon: "bell", action: () => setTab("announcements") },
           { label: "Documents", sub: "Contracts & files", icon: "folder", action: () => setTab("documents") },
-          { label: "Contacts", sub: "Officers & stewards", icon: "phone", action: () => setSub({ type: "contact" }) },
+          { label: "DWA Contacts", sub: "Officers & stewards", icon: "phone", action: () => setSub({ type: "contact" }) },
           { label: "Join Zoom Meeting", sub: "Union meeting room", icon: "video", action: () => setTab("zoom") },
           { label: "Meeting Minutes", sub: "Summaries & notes", icon: "notes", action: () => setTab("minutes") },
           { label: "Seniority", sub: "Members by hire date", icon: "shield", action: () => setTab("seniority") },
@@ -2781,6 +2785,7 @@ export default function DWAApp() {
             {[
               { icon: "calendar", label: "Union Meeting", action: () => setAdminSection("meeting") },
               { icon: "video", label: "Zoom Room", action: () => setAdminSection("zoom") },
+              { icon: "phone", label: "DWA Contacts", action: () => setAdminSection("contacts") },
               { icon: "users", label: "Member Requests", action: () => setAdminSection("members") },
               ...(bannedUsers.length > 0 ? [{ icon: "x", label: `Banned (${bannedUsers.length})`, action: () => setAdminSection("banned") }] : []),
               ...(isSuper ? [{ icon: "shield", label: "Manage Officials", action: () => setAdminSection("accounts") }] : []),
@@ -3161,6 +3166,64 @@ export default function DWAApp() {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {tab === "admin" && adminSection === "contacts" && (
+            <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
+              <AdminFormHeader title="DWA Contacts" />
+              <div style={{ ...card({ padding: "16px" }), ...col(12) }}>
+                <div style={{ ...f(12, 700), color: "var(--gold)", letterSpacing: ".1em", marginBottom: 4 }}>Add Contact</div>
+                <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginBottom: 4 }}>Contacts appear on the DWA Contacts page visible to all members.</div>
+                <div style={col(5)}>
+                  <label style={lbl}>Full Name</label>
+                  <input style={inp()} value={newContactName} onChange={e => setNewContactName(e.target.value)} placeholder="Full name" />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div style={col(5)}>
+                    <label style={lbl}>Title</label>
+                    <select style={dropStyle()} value={newContactTitle} onChange={e => setNewContactTitle(e.target.value)}>
+                      <option>President</option>
+                      <option>Vice President</option>
+                      <option>Treasurer</option>
+                      <option>Recording Secretary</option>
+                      <option>Trustee</option>
+                      <option>Sergeant at Arms</option>
+                      <option>Shop Steward</option>
+                    </select>
+                  </div>
+                  <div style={col(5)}>
+                    <label style={lbl}>Location</label>
+                    <input style={inp()} value={newContactDept} onChange={e => setNewContactDept(e.target.value)} placeholder="e.g. Jersey City" />
+                  </div>
+                </div>
+                <div style={col(5)}>
+                  <label style={lbl}>Phone</label>
+                  <input style={inp()} type="tel" value={newContactPhone} onChange={e => setNewContactPhone(e.target.value)} placeholder="Phone number" />
+                </div>
+                {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>✓ Saved!</div>}
+                <button style={btnGold(!newContactName.trim())} disabled={!newContactName.trim()} onClick={() => {
+                  setStewardsData(prev => { const updated = [...prev, { id: Date.now(), name: newContactName.trim(), title: newContactTitle, dept: newContactDept.trim(), phone: newContactPhone.replace(/\D/g, "") }]; saveStewards(updated); return updated; });
+                  setNewContactName(""); setNewContactPhone(""); setNewContactDept(""); setNewContactTitle("Shop Steward");
+                  saveFlash(() => {});
+                }}>ADD CONTACT</button>
+              </div>
+              <div style={{ ...card({ padding: "16px" }), ...col(8) }}>
+                <div style={{ ...f(12, 700), color: "var(--gold)", marginBottom: 8 }}>Current Contacts ({stewardsData.length})</div>
+                {stewardsData.length === 0 && <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>No contacts added yet.</div>}
+                {stewardsData.map(s => (
+                  <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--seam)" }}>
+                    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#2a1f0a", border: "1px solid #6b5a2e", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span style={{ ...f(10, 600), color: "#c4a44e" }}>{s.name.split(" ").map(n => n[0]).join("").slice(0, 2)}</span>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ ...f(13, 600), color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
+                      <div style={{ ...f(10, 400, "serif"), color: "var(--text3)", fontStyle: "italic" }}>{s.title}{s.dept ? ` · ${s.dept}` : ""}{s.phone ? ` · ${s.phone}` : ""}</div>
+                    </div>
+                    <button onClick={() => { setConfirmModal({ title: `Remove ${s.name}?`, message: `${s.name} will be removed from DWA Contacts.`, danger: true, onConfirm: () => { const removed = s; setStewardsData(prev => { const updated = prev.filter(x => x.id !== s.id); saveStewards(updated); return updated; }); setToastMsg({ message: `${s.name} removed`, onUndo: () => { setStewardsData(prev => { const restored = [...prev, removed]; saveStewards(restored); return restored; }); } }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer", flexShrink: 0 }}>DEL</button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
