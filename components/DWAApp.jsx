@@ -1,6 +1,6 @@
 /* DWA v1.3.0 */
 import { useState, useEffect, useRef } from "react";
-import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, saveAnnouncements as saveAnnouncementsToFirestore, loadAnnouncements as loadAnnouncementsFromFirestore } from "../lib/firebase";
+import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority } from "../lib/firebase";
 
 // ── PLACEHOLDER BASE64 ASSETS (replace with real ones before deploy) ──
 const TEXTURE_B64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E";
@@ -874,51 +874,62 @@ export default function DWAApp() {
     return () => unsubscribe();
   }, []);
 
-  // ── LOAD ANNOUNCEMENTS FROM FIRESTORE ──
+  // ── LOAD ALL APP DATA FROM FIRESTORE ──
   useEffect(() => {
-    loadAnnouncementsFromFirestore().then((anns) => {
+    // Announcements
+    fbLoadAnnouncements().then((anns) => {
       if (anns && anns.length > 0) setAnnouncements(anns);
     }).catch(() => {});
-  }, []);
 
-  // ── FETCH DATA FROM API (connected to admin CMS) ──
-  useEffect(() => {
-    fetch("/api/data")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.stewards) {
-          // Transform steward data from API format to component format
-          const mapped = data.stewards.map((s) => ({
-            name: s.name,
-            title: s.title || "Shop Steward",
-            phone: s.phone || "",
-            dept: s.dept || "",
-          }));
-          // We need to update STEWARDS-like usage — set a stewards state
-          setStewardsData(mapped);
-        }
-        if (data.documents) setDocuments(data.documents.filter(d => d.name !== "Grievance Form (Blank)" && d.name !== "Union Meeting Flyer"));
-        if (data.grievanceEmails) setGrievanceEmails(data.grievanceEmails);
-        if (data.cbaArticles) setCbaArticlesData(data.cbaArticles);
-      })
-      .catch(() => {
-        // If API not available, keep hardcoded defaults
-        console.log("API not available, using hardcoded data");
-      });
+    // Stewards
+    fbLoadStewards().then((list) => {
+      if (list && list.length > 0) setStewardsData(list);
+    }).catch(() => {});
 
-    // Load user-uploaded documents from Firestore and merge with hardcoded
+    // Meeting info
+    fbLoadMeetingInfo().then((info) => {
+      if (info) { setNextMeeting(info); setEditMeeting(info); }
+    }).catch(() => {});
+
+    // Zoom info
+    fbLoadZoomInfo().then((info) => {
+      if (info) { setZoomInfo(info); setEditZoom(info); }
+    }).catch(() => {});
+
+    // Minutes
+    fbLoadMinutes().then((list) => {
+      if (list && list.length > 0) setMinutes(list);
+    }).catch(() => {});
+
+    // Seniority
+    fbLoadSeniority().then((list) => {
+      if (list && list.length > 0) setSeniority(list);
+    }).catch(() => {});
+
+    // Documents — merge Firestore-saved docs with hardcoded ones
     loadUploadedDocuments().then((saved) => {
-      if (saved.length > 0) {
+      if (saved && saved.length > 0) {
         setDocuments(prev => {
           const hardcodedIds = prev.map(d => d.id);
           const newDocs = saved.filter(d => !hardcodedIds.includes(d.id));
           return [...prev, ...newDocs];
         });
       }
-    }).catch(() => console.log("No saved documents in Firestore"));
+    }).catch(() => {});
+
+    // Also fetch from /api/data for grievanceEmails and cbaArticles (not yet in Firestore)
+    fetch("/api/data")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.grievanceEmails) setGrievanceEmails(data.grievanceEmails);
+        if (data.cbaArticles) setCbaArticlesData(data.cbaArticles);
+      })
+      .catch(() => {
+        console.log("API not available, using hardcoded defaults");
+      });
   }, []);
 
-  // Stewards state from API (falls back to hardcoded STEWARDS)
+  // Stewards state (falls back to hardcoded STEWARDS)
   const [stewardsData, setStewardsData] = useState(STEWARDS);
   // Grievance recipient emails from API (admin-configurable)
   const [grievanceEmails, setGrievanceEmails] = useState([]);
@@ -1072,20 +1083,31 @@ export default function DWAApp() {
 
   // ── Save documents to Firestore ──
   const saveDocuments = async (docs) => {
-    try {
-      await saveUploadedDocuments(docs);
-    } catch (e) {
-      console.log("Failed to save documents to Firestore:", e);
-    }
+    try { await saveUploadedDocuments(docs); } catch (e) { console.log("Failed to save documents:", e); }
   };
-
   // ── Save announcements to Firestore ──
   const saveAnnouncements = async (anns) => {
-    try {
-      await saveAnnouncementsToFirestore(anns);
-    } catch (e) {
-      console.log("Failed to save announcements to Firestore:", e);
-    }
+    try { await fbSaveAnnouncements(anns); } catch (e) { console.log("Failed to save announcements:", e); }
+  };
+  // ── Save stewards to Firestore ──
+  const saveStewards = async (list) => {
+    try { await fbSaveStewards(list); } catch (e) { console.log("Failed to save stewards:", e); }
+  };
+  // ── Save meeting info to Firestore ──
+  const saveMeetingInfo = async (info) => {
+    try { await fbSaveMeetingInfo(info); } catch (e) { console.log("Failed to save meeting info:", e); }
+  };
+  // ── Save zoom info to Firestore ──
+  const saveZoomInfoFn = async (info) => {
+    try { await fbSaveZoomInfo(info); } catch (e) { console.log("Failed to save zoom info:", e); }
+  };
+  // ── Save minutes to Firestore ──
+  const saveMinutesFn = async (list) => {
+    try { await fbSaveMinutes(list); } catch (e) { console.log("Failed to save minutes:", e); }
+  };
+  // ── Save seniority to Firestore ──
+  const saveSeniorityFn = async (list) => {
+    try { await fbSaveSeniority(list); } catch (e) { console.log("Failed to save seniority:", e); }
   };
 
   const filteredDocs = documents.filter(d =>
@@ -2884,7 +2906,7 @@ export default function DWAApp() {
                 <button style={btnGold(!newSenName.trim() || !newSenDate)} disabled={!newSenName.trim() || !newSenDate} onClick={() => {
                   if (!newSenName.trim()) { setSenError("Please enter a name."); return; }
                   if (!newSenDate) { setSenError("Please select a hire date."); return; }
-                  setSeniority(prev => [...prev, { id: Date.now(), name: newSenName.trim(), hireDate: newSenDate, location: newSenLocation }]);
+                  setSeniority(prev => { const updated = [...prev, { id: Date.now(), name: newSenName.trim(), hireDate: newSenDate, location: newSenLocation }]; saveSeniorityFn(updated); return updated; });
                   setNewSenName(""); setNewSenDate(""); setNewSenLocation("Jersey City"); setSenError("");
                   saveFlash(() => { });
                 }}>ADD TO SENIORITY LIST</button>
@@ -2897,7 +2919,7 @@ export default function DWAApp() {
                       <div style={{ ...f(13, 600), color: "var(--text)" }}>{s.name}</div>
                       <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>{s.location} · {s.hireDate}</div>
                     </div>
-                    <button onClick={() => { setConfirmModal({ title: `Remove ${s.name}?`, message: `${s.name} will be removed from the seniority list.`, danger: true, onConfirm: () => { const removed = s; setSeniority(prev => prev.filter(x => x.id !== s.id)); setToastMsg({ message: `${s.name} removed`, onUndo: () => { setSeniority(prev => [...prev, removed]); } }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>DEL</button>
+                    <button onClick={() => { setConfirmModal({ title: `Remove ${s.name}?`, message: `${s.name} will be removed from the seniority list.`, danger: true, onConfirm: () => { const removed = s; setSeniority(prev => { const updated = prev.filter(x => x.id !== s.id); saveSeniorityFn(updated); return updated; }); setToastMsg({ message: `${s.name} removed`, onUndo: () => { setSeniority(prev => { const restored = [...prev, removed]; saveSeniorityFn(restored); return restored; }); } }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>DEL</button>
                   </div>
                 ))}
               </div>
@@ -2946,7 +2968,7 @@ export default function DWAApp() {
                   </div>
                 ))}
                 {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>✓ Saved!</div>}
-                <button style={btnGold()} onClick={() => saveFlash(() => setNextMeeting({ ...editMeeting }))}>SAVE MEETING INFO</button>
+                <button style={btnGold()} onClick={() => { const info = { ...editMeeting }; setNextMeeting(info); saveMeetingInfo(info); saveFlash(() => {}); }}>SAVE MEETING INFO</button>
               </div>
               <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>Preview: {editMeeting.title} · {editMeeting.date} · {editMeeting.location}</div>
             </div>
@@ -2963,7 +2985,7 @@ export default function DWAApp() {
                   </div>
                 ))}
                 {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>✓ Saved!</div>}
-                <button style={btnGold()} onClick={() => saveFlash(() => setZoomInfo({ ...editZoom }))}>SAVE ZOOM INFO</button>
+                <button style={btnGold()} onClick={() => { const info = { ...editZoom }; setZoomInfo(info); saveZoomInfoFn(info); saveFlash(() => {}); }}>SAVE ZOOM INFO</button>
               </div>
             </div>
           )}
@@ -2977,7 +2999,7 @@ export default function DWAApp() {
                 <div style={col(5)}><label style={lbl}>Summary</label><textarea style={{ ...inp(), minHeight: 80, resize: "vertical", lineHeight: 1.5 }} value={newMinSummary} onChange={e => setNewMinSummary(e.target.value)} placeholder="Brief summary of meeting…" /></div>
                 {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>✓ Saved!</div>}
                 <button style={btnGold(!newMinTitle.trim() || !newMinDate)} disabled={!newMinTitle.trim() || !newMinDate} onClick={() => {
-                  setMinutes(prev => [{ id: Date.now(), title: newMinTitle, date: newMinDate, summary: newMinSummary }, ...prev]);
+                  setMinutes(prev => { const updated = [{ id: Date.now(), title: newMinTitle, date: newMinDate, summary: newMinSummary }, ...prev]; saveMinutesFn(updated); return updated; });
                   setNewMinTitle(""); setNewMinDate(""); setNewMinSummary("");
                   saveFlash(() => { });
                 }}>POST MINUTES</button>
@@ -2990,7 +3012,7 @@ export default function DWAApp() {
                       <div style={{ ...f(11, 400, 'serif'), color: "var(--gold)", fontStyle: "italic", marginTop: 2 }}>{m.date}</div>
                       <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", marginTop: 4 }}>{m.summary.slice(0, 80)}…</div>
                     </div>
-                    <button onClick={() => setMinutes(prev => prev.filter(x => x.id !== m.id))} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>DEL</button>
+                    <button onClick={() => setConfirmModal({ title: "Delete Minutes", message: `Delete "${m.title}"?`, danger: true, onConfirm: () => { const removed = m; setMinutes(prev => { const updated = prev.filter(x => x.id !== m.id); saveMinutesFn(updated); return updated; }); setToastMsg({ message: `"${m.title}" deleted`, onUndo: () => setMinutes(prev => { const restored = [removed, ...prev]; saveMinutesFn(restored); return restored; }) }); } })} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>DEL</button>
                   </div>
                 </div>
               ))}
@@ -3220,7 +3242,7 @@ export default function DWAApp() {
                   </div>
                 </div>
                 <button style={btnGold(!newStewardName.trim())} disabled={!newStewardName.trim()} onClick={() => {
-                  setStewardsData(prev => [...prev, { id: Date.now(), name: newStewardName.trim(), title: "Shop Steward", dept: newStewardDept, phone: newStewardPhone.replace(/\D/g, "") }]);
+                  setStewardsData(prev => { const updated = [...prev, { id: Date.now(), name: newStewardName.trim(), title: "Shop Steward", dept: newStewardDept, phone: newStewardPhone.replace(/\D/g, "") }]; saveStewards(updated); return updated; });
                   setNewStewardName(""); setNewStewardPhone(""); setNewStewardDept("Jersey City");
                   saveFlash(() => {});
                 }}>PROMOTE TO STEWARD</button>
@@ -3238,7 +3260,7 @@ export default function DWAApp() {
                       <div style={{ ...f(10, 400, "serif"), color: "var(--text3)", fontStyle: "italic" }}>{s.dept || "—"}{s.phone ? ` · ${s.phone}` : ""}</div>
                     </div>
                     <div style={{ ...f(9, 700), color: "#e8b84b", background: "#2a1f0a", padding: "3px 8px", borderRadius: 6 }}>STEWARD</div>
-                    <button onClick={() => { setConfirmModal({ title: `Demote ${s.name}?`, message: `${s.name} will lose steward privileges. They'll become a regular member.`, danger: true, onConfirm: () => { const removed = s; setStewardsData(prev => prev.filter(x => x.id !== s.id)); setToastMsg({ message: `${s.name} demoted to member`, onUndo: () => { setStewardsData(prev => [...prev, removed]); } }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer", flexShrink: 0 }}>DEMOTE</button>
+                    <button onClick={() => { setConfirmModal({ title: `Demote ${s.name}?`, message: `${s.name} will lose steward privileges. They'll become a regular member.`, danger: true, onConfirm: () => { const removed = s; setStewardsData(prev => { const updated = prev.filter(x => x.id !== s.id); saveStewards(updated); return updated; }); setToastMsg({ message: `${s.name} demoted to member`, onUndo: () => { setStewardsData(prev => { const restored = [...prev, removed]; saveStewards(restored); return restored; }); } }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer", flexShrink: 0 }}>DEMOTE</button>
                   </div>
                 ))}
               </div>
