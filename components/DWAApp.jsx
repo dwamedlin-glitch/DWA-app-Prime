@@ -1112,7 +1112,8 @@ export default function DWAApp() {
     // When editing, check if actual text content changed (ignoring whitespace changes)
     const existingAnn = editAnnId ? announcements.find(a => a.id === editAnnId) : null;
     const textChanged = !existingAnn || existingAnn.title.replace(/\s+/g,' ') !== annTitle.replace(/\s+/g,' ') || existingAnn.body.replace(/\s+/g,' ') !== annBody.replace(/\s+/g,' ');
-    if (textChanged) {
+    const needsTranslation = textChanged || !existingAnn?.bodyEs || existingAnn.bodyEs === existingAnn.body;
+    if (needsTranslation) {
       setTranslating(true);
       try {
         const response = await fetch("/api/translate", {
