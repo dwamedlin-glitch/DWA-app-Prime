@@ -812,7 +812,7 @@ export default function DWAApp() {
     { id: 2, title: "Special Meeting – March 2026", date: "Mar 12, 2026", summary: "Management presented proposed changes to overtime policy. Union leadership taking comments through March 20." },
   ]);
   const [notifs, setNotifs] = useState({ meetings: true, announcements: true, grievances: false });
-  const [documents, setDocuments] = useState(DOCUMENTS_DATA.filter(d => d.id !== 3));
+  const [documents, setDocuments] = useState(DOCUMENTS_DATA);
   const [nextMeeting, setNextMeeting] = useState({ title: "Contract Ratification Vote", date: "May 15, 2026", location: "Union Hall", time: "6:00 PM" });
   const [zoomInfo, setZoomInfo] = useState({ meetingId: "783 115 6878", passcode: "9cDtkC", link: "https://zoom.us/j/7831156878" });
   const [adminSection, setAdminSection] = useState(null);
@@ -931,14 +931,10 @@ export default function DWAApp() {
       if (list && list.length > 0) setSeniority(list);
     }).catch(() => {});
 
-    // Documents — load user-added docs from Firestore and merge with hardcoded
+    // Documents — if Firestore has saved docs, use those as the full list
     loadUploadedDocuments().then((saved) => {
       if (saved && saved.length > 0) {
-        setDocuments(prev => {
-          const existingIds = prev.map(dd => dd.id);
-          const newDocs = saved.filter(d => !existingIds.includes(d.id));
-          return [...prev, ...newDocs];
-        });
+        setDocuments(saved);
       }
     }).catch(() => {});
 
@@ -1149,9 +1145,7 @@ export default function DWAApp() {
   const HARDCODED_DOC_IDS = [1, 2, 3];
   const saveDocuments = async (docs) => {
     try {
-      // Only persist user-added docs, not hardcoded ones
-      const userDocs = docs.filter(d => !HARDCODED_DOC_IDS.includes(d.id));
-      await saveUploadedDocuments(userDocs);
+      await saveUploadedDocuments(docs);
     } catch (e) { console.log("Failed to save documents:", e); }
   };
   // ── Save announcements to Firestore ──
