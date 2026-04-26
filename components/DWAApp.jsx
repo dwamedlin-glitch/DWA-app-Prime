@@ -938,7 +938,7 @@ export default function DWAApp() {
         const cleaned = saved.filter(d => ![1, 2, 3].includes(d.id));
         if (cleaned.length !== saved.length) {
           // Save the cleaned list back to Firestore so this only happens once
-          saveDocuments(cleaned);
+          saveUploadedDocuments(cleaned).catch(() => {});
         }
         setDocuments(prev => {
           const hardcodedIds = prev.map(dd => dd.id);
