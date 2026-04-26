@@ -1,49 +1,67 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { NextRequest, NextResponse } from "next/server";
+// app/api/translate/route.ts
+// Free Spanish translation using MyMemory API (no API key required)
+// Preserves line breaks by translating paragraph-by-paragraph
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+export async function POST(request: Request) {
+  const { title, body } = await request.json();
 
-export async function POST(req: NextRequest) {
+  if (!title && !body) {
+    return Response.json({ error: "Missing title or body" }, { status: 400 });
+  }
+
   try {
-    const { title, body } = await req.json();
+    let titleEs = title || "";
+    let bodyEs = body || "";
 
-    if (!title || !body) {
-      return NextResponse.json(
-        { error: "Title and body are required" },
-        { status: 400 }
-      );
+    // Translate title
+    if (title) {
+      titleEs = await translateText(title);
     }
 
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      messages: [
-        {
-          role: "user",
-          content: `You are a professional translator for a labor union. Translate the following announcement title and body from English to Spanish. Keep the tone professional and clear. Return ONLY valid JSON with keys "titleEs" and "bodyEs" — no markdown, no explanation, nothing else.
+    // Translate body paragraph-by-paragraph to preserve line breaks
+    if (body) {
+      const paragraphs = body.split("\n");
+      const translated: string[] = [];
+      for (const p of paragraphs) {
+        if (p.trim() === "") {
+          translated.push("");
+        } else {
+          translated.push(await translateText(p));
+        }
+      }
+      bodyEs = translated.join("\n");
+    }
 
-Title: ${title}
-
-Body: ${body}`,
-        },
-      ],
-    });
-
-    const text = message.content[0].type === "text" ? message.content[0].text : "{}";
-    const parsed = JSON.parse(text.trim());
-
-    return NextResponse.json({
-      titleEs: parsed.titleEs || title,
-      bodyEs: parsed.bodyEs || body,
-    });
+    return Response.json({ titleEs, bodyEs });
   } catch (error) {
     console.error("Translation error:", error);
-    // Graceful fallback — return English if translation fails
-    return NextResponse.json(
-      { error: "Translation failed", titleEs: null, bodyEs: null },
-      { status: 500 }
-    );
+    return Response.json({
+      error: "Translation failed",
+      titleEs: null,
+      bodyEs: null,
+    });
+  }
+}
+
+async function translateText(text: string): Promise<string> {
+  if (!text || text.trim() === "") return text;
+
+  try {
+    const encoded = encodeURIComponent(text);
+    const url = `https://api.mymemory.translated.net/get?q=${encoded}&langpair=en|es`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.responseStatus === 200 && data.responseData?.translatedText) {
+      let result = data.responseData.translatedText;
+      // MyMemory sometimes returns ALL CAPS — fix that
+      if (result === result.toUpperCase() && text !== text.toUpperCase()) {
+        result = result.charAt(0).toUpperCase() + result.slice(1).toLowerCase();
+      }
+      return result;
+    }
+    return text;
+  } catch (e) {
+    return text;
   }
 }
