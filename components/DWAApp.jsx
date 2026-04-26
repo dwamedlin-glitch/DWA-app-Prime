@@ -1,6 +1,7 @@
-/* DWA v1.2.2 */
+/* DWA v1.2.3 */
 import { useState, useEffect, useRef } from "react";
-import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers } from "../lib/firebase";
+import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, db } from "../lib/firebase";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 
 // ── PLACEHOLDER BASE64 ASSETS (replace with real ones before deploy) ──
 const TEXTURE_B64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E";
@@ -904,6 +905,18 @@ export default function DWAApp() {
         // If API not available, keep hardcoded defaults
         console.log("API not available, using hardcoded data");
       });
+
+    // Load user-uploaded documents from Firestore and merge with hardcoded
+    getDoc(doc(db, "app_data", "documents")).then((snap) => {
+      if (snap.exists() && snap.data().list) {
+        const saved = snap.data().list;
+        setDocuments(prev => {
+          const hardcodedIds = prev.map(d => d.id);
+          const newDocs = saved.filter(d => !hardcodedIds.includes(d.id));
+          return [...prev, ...newDocs];
+        });
+      }
+    }).catch(() => console.log("No saved documents in Firestore"));
   }, []);
 
   // Stewards state from API (falls back to hardcoded STEWARDS)
@@ -1058,16 +1071,12 @@ export default function DWAApp() {
     setRemedy(""); setContractArticle(""); setPriorGrievance(false); setGrievanceError(false);
   };
 
-  // ── Save documents to Firebase via API ──
+  // ── Save documents to Firestore directly ──
   const saveDocuments = async (docs) => {
     try {
-      await fetch("/api/data", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documents: docs }),
-      });
+      await setDoc(doc(db, "app_data", "documents"), { list: docs }, { merge: true });
     } catch (e) {
-      console.log("Failed to save documents to Firebase:", e);
+      console.log("Failed to save documents to Firestore:", e);
     }
   };
 
