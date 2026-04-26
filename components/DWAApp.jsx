@@ -812,7 +812,7 @@ export default function DWAApp() {
     { id: 2, title: "Special Meeting – March 2026", date: "Mar 12, 2026", summary: "Management presented proposed changes to overtime policy. Union leadership taking comments through March 20." },
   ]);
   const [notifs, setNotifs] = useState({ meetings: true, announcements: true, grievances: false });
-  const [documents, setDocuments] = useState(DOCUMENTS_DATA);
+  const [documents, setDocuments] = useState(DOCUMENTS_DATA.filter(d => d.id !== 3));
   const [nextMeeting, setNextMeeting] = useState({ title: "Contract Ratification Vote", date: "May 15, 2026", location: "Union Hall", time: "6:00 PM" });
   const [zoomInfo, setZoomInfo] = useState({ meetingId: "783 115 6878", passcode: "9cDtkC", link: "https://zoom.us/j/7831156878" });
   const [adminSection, setAdminSection] = useState(null);
@@ -934,9 +934,15 @@ export default function DWAApp() {
     // Documents — merge Firestore-saved docs with hardcoded ones
     loadUploadedDocuments().then((saved) => {
       if (saved && saved.length > 0) {
+        // One-time cleanup: remove old hardcoded docs that got stuck in Firestore (ids 1,2,3)
+        const cleaned = saved.filter(d => ![1, 2, 3].includes(d.id));
+        if (cleaned.length !== saved.length) {
+          // Save the cleaned list back to Firestore so this only happens once
+          saveDocuments(cleaned);
+        }
         setDocuments(prev => {
-          const hardcodedIds = prev.map(d => d.id);
-          const newDocs = saved.filter(d => !hardcodedIds.includes(d.id));
+          const hardcodedIds = prev.map(dd => dd.id);
+          const newDocs = cleaned.filter(d => !hardcodedIds.includes(d.id));
           return [...prev, ...newDocs];
         });
       }
