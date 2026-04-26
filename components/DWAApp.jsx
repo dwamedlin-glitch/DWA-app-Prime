@@ -637,7 +637,7 @@ export default function DWAApp() {
   const isAdmin = role === "super" || role === "admin";
   const isSuper = role === "super";
   const [currentUserEmail, setCurrentUserEmail] = useState("");
-  const SUPER_ADMIN_EMAIL = "super@dwa.org";
+  const SUPER_ADMIN_EMAIL = "dwamedlin@gmail.com";
   const [adminEmails, setAdminEmails] = useState(["admin@dwa.org"]);
   const [pendingAdmins, setPendingAdmins] = useState([]);
   const [newAdminEmail, setNewAdminEmail] = useState("");
@@ -952,13 +952,27 @@ export default function DWAApp() {
     setLoginError(false);
     try {
       const cred = await loginUser(e, password);
-      const profile = await getUserProfile(cred.user.uid);
+      let profile = await getUserProfile(cred.user.uid);
+      // Auto-create profile for super admin on first login
+      if (!profile && e === SUPER_ADMIN_EMAIL) {
+        await saveUserProfile(cred.user.uid, {
+          name: "Admin",
+          email: e,
+          location: "",
+          phone: "",
+          role: "admin",
+          status: "approved",
+          memberSince: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+          createdAt: new Date().toISOString(),
+        });
+        profile = { name: "Admin", email: e, role: "admin", status: "approved" };
+      }
       if (profile && profile.status === "pending") {
         setAuthLoading(false);
         setAuthView("pending");
         return;
       }
-      if (profile && profile.status !== "approved") {
+      if (!profile && e !== SUPER_ADMIN_EMAIL) {
         setAuthLoading(false);
         setLoginError(true);
         return;
@@ -1442,7 +1456,7 @@ export default function DWAApp() {
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg,transparent,var(--gold),transparent)" }} />
 
         <div className="rise" style={{ width: "100%", ...col(0), alignItems: "center" }}>
-          <img src={LOGO_B64} alt="DWA" onClick={() => { setRole("super"); setCurrentUserEmail(SUPER_ADMIN_EMAIL); setLoggedIn(true); }} style={{ width: "min(200px, 52vw)", objectFit: "contain", marginBottom: 8, cursor: "pointer" }} />
+          <img src={LOGO_B64} alt="DWA" style={{ width: "min(200px, 52vw)", objectFit: "contain", marginBottom: 8 }} />
           <div style={{ ...f(11, 600), color: "var(--text3)", letterSpacing: ".25em", textTransform: "uppercase", marginBottom: 28 }}>Dairy Workers Association</div>
           <div className="gold-rule" style={{ width: "100%", marginBottom: 28 }} />
 
