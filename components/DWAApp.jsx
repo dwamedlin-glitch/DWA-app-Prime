@@ -1107,24 +1107,32 @@ export default function DWAApp() {
 
   const postAnn = async () => {
     if (!annTitle.trim() || !annBody.trim()) return;
-    setTranslating(true);
     let titleEs = annTitle;
     let bodyEs = annBody;
-    try {
-      const response = await fetch("/api/translate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: annTitle, body: annBody }),
-      });
-      const data = await response.json();
-      if (data.titleEs) titleEs = data.titleEs;
-      if (data.bodyEs) bodyEs = data.bodyEs;
-    } catch (e) {
-      // If translation fails, fall back to English for both
+    // When editing, check if actual text content changed (ignoring whitespace changes)
+    const existingAnn = editAnnId ? announcements.find(a => a.id === editAnnId) : null;
+    const textChanged = !existingAnn || existingAnn.title.replace(/\s+/g,' ') !== annTitle.replace(/\s+/g,' ') || existingAnn.body.replace(/\s+/g,' ') !== annBody.replace(/\s+/g,' ');
+    if (textChanged) {
+      setTranslating(true);
+      try {
+        const response = await fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: annTitle, body: annBody }),
+        });
+        const data = await response.json();
+        if (data.titleEs) titleEs = data.titleEs;
+        if (data.bodyEs) bodyEs = data.bodyEs;
+      } catch (e) {
+        // If translation fails, fall back to English for both
+      }
+      setTranslating(false);
+    } else if (existingAnn) {
+      // Keep existing translations, just update formatting
+      titleEs = existingAnn.titleEs || annTitle;
+      bodyEs = existingAnn.bodyEs || annBody;
     }
-    setTranslating(false);
     if (editAnnId) {
-      // Editing existing announcement
       setAnnouncements(prev => {
         const updated = prev.map(a => a.id === editAnnId ? { ...a, title: annTitle, body: annBody, titleEs, bodyEs, urgent: annUrgent } : a);
         saveAnnouncements(updated);
@@ -1132,7 +1140,6 @@ export default function DWAApp() {
       });
       setEditAnnId(null);
     } else {
-      // Creating new announcement
       const newAnn = { id: Date.now(), title: annTitle, body: annBody, titleEs, bodyEs, urgent: annUrgent };
       setAnnouncements(prev => { const updated = [newAnn, ...prev]; saveAnnouncements(updated); return updated; });
     }
