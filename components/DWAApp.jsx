@@ -1986,7 +1986,7 @@ export default function DWAApp() {
                 </div>
               </div>
               <div className="gold-rule" />
-              <div style={{ ...f(15, 400, 'serif'), color: "var(--text2)", lineHeight: 1.75, marginTop: 20 }}>{displayBody}</div>
+              <div style={{ ...f(15, 400, 'serif'), color: "var(--text2)", lineHeight: 1.75, marginTop: 20, whiteSpace: "pre-wrap" }}>{displayBody}</div>
               {annLang === "es" && !a.bodyEs && (
                 <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginTop: 12 }}>Translation not available for this announcement.</div>
               )}
