@@ -711,6 +711,7 @@ export default function DWAApp() {
   const [annBody, setAnnBody] = useState("");
   const [annUrgent, setAnnUrgent] = useState(false);
   const [annPosted, setAnnPosted] = useState(false);
+  const [editAnnId, setEditAnnId] = useState(null); // null = new post, id = editing existing
   const [annLang, setAnnLang] = useState("en"); // language toggle for announcements tab
   const [translating, setTranslating] = useState(false); // translation loading state
   const [minutes, setMinutes] = useState([
@@ -1122,8 +1123,19 @@ export default function DWAApp() {
       // If translation fails, fall back to English for both
     }
     setTranslating(false);
-    const newAnn = { id: Date.now(), title: annTitle, body: annBody, titleEs, bodyEs, urgent: annUrgent };
-    setAnnouncements(prev => { const updated = [newAnn, ...prev]; saveAnnouncements(updated); return updated; });
+    if (editAnnId) {
+      // Editing existing announcement
+      setAnnouncements(prev => {
+        const updated = prev.map(a => a.id === editAnnId ? { ...a, title: annTitle, body: annBody, titleEs, bodyEs, urgent: annUrgent } : a);
+        saveAnnouncements(updated);
+        return updated;
+      });
+      setEditAnnId(null);
+    } else {
+      // Creating new announcement
+      const newAnn = { id: Date.now(), title: annTitle, body: annBody, titleEs, bodyEs, urgent: annUrgent };
+      setAnnouncements(prev => { const updated = [newAnn, ...prev]; saveAnnouncements(updated); return updated; });
+    }
     setAnnPosted(true);
     setTimeout(() => { setAnnPosted(false); setAnnTitle(""); setAnnBody(""); setAnnUrgent(false); }, 2500);
   };
@@ -2858,7 +2870,7 @@ export default function DWAApp() {
           {/* Admin Sections */}
           {tab === "admin" && adminSection === "announcements" && (
             <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
-              <AdminFormHeader title="Post Announcement" />
+              <AdminFormHeader title={editAnnId ? "Edit Announcement" : "Post Announcement"} />
               <div style={{ ...card({ padding: "16px" }), ...col(12) }}>
                 <div style={col(5)}>
                   <label style={lbl}>Title</label>
@@ -2872,9 +2884,12 @@ export default function DWAApp() {
                   <div style={{ ...f(13, 500), color: "var(--text)" }}>Mark as Urgent</div>
                   <Tog on={annUrgent} flip={() => setAnnUrgent(v => !v)} />
                 </div>
-                {annPosted && <div style={{ ...f(13, 600), color: "var(--green)" }}>✓ Posted in EN & ES!</div>}
+                {annPosted && <div style={{ ...f(13, 600), color: "var(--green)" }}>{editAnnId ? "✓ Updated in EN & ES!" : "✓ Posted in EN & ES!"}</div>}
                 {translating && <div style={{ ...f(12, 400, 'serif'), color: "var(--gold)", fontStyle: "italic" }}>Translating to Spanish…</div>}
-                <button style={btnGold(!annTitle.trim() || !annBody.trim() || translating)} onClick={postAnn} disabled={!annTitle.trim() || !annBody.trim() || translating}>{translating ? "TRANSLATING…" : "POST ANNOUNCEMENT"}</button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button style={{ ...btnGold(!annTitle.trim() || !annBody.trim() || translating), flex: 1 }} onClick={postAnn} disabled={!annTitle.trim() || !annBody.trim() || translating}>{translating ? "TRANSLATING…" : editAnnId ? "UPDATE ANNOUNCEMENT" : "POST ANNOUNCEMENT"}</button>
+                  {editAnnId && <button onClick={() => { setEditAnnId(null); setAnnTitle(""); setAnnBody(""); setAnnUrgent(false); }} style={{ padding: "10px 14px", background: "none", border: "1px solid var(--seam)", borderRadius: 8, color: "var(--text3)", ...f(12, 700, 'bebas'), letterSpacing: ".1em", cursor: "pointer" }}>CANCEL</button>}
+                </div>
               </div>
               <div style={{ ...f(10, 700), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".15em" }}>Active Announcements</div>
               {announcements.map(a => (
@@ -2885,7 +2900,10 @@ export default function DWAApp() {
                       <div style={{ ...f(13, 600), color: "var(--text)" }}>{a.title}</div>
                       <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", marginTop: 4, fontStyle: "italic" }}>{a.body.slice(0, 80)}…</div>
                     </div>
-                    <button onClick={() => setConfirmModal({ title: "Delete Announcement", message: `Delete "${a.title}"?`, danger: true, onConfirm: () => { const removed = a; setAnnouncements(prev => { const updated = prev.filter(x => x.id !== a.id); saveAnnouncements(updated); return updated; }); setToastMsg({ message: `"${a.title}" deleted`, onUndo: () => setAnnouncements(prev => { const restored = [removed, ...prev]; saveAnnouncements(restored); return restored; }) }); } })} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>DEL</button>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+                      <button onClick={() => { setEditAnnId(a.id); setAnnTitle(a.title); setAnnBody(a.body); setAnnUrgent(!!a.urgent); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ ...f(11, 700), color: "var(--gold)", background: "none", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>EDIT</button>
+                      <button onClick={() => setConfirmModal({ title: "Delete Announcement", message: `Delete "${a.title}"?`, danger: true, onConfirm: () => { const removed = a; setAnnouncements(prev => { const updated = prev.filter(x => x.id !== a.id); saveAnnouncements(updated); return updated; }); setToastMsg({ message: `"${a.title}" deleted`, onUndo: () => setAnnouncements(prev => { const restored = [removed, ...prev]; saveAnnouncements(restored); return restored; }) }); } })} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>DEL</button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -3117,7 +3135,6 @@ export default function DWAApp() {
                     const updatedStr = now.toLocaleDateString("en-US", { month: "short", year: "numeric" });
                     let fileUrl = undefined;
                     let fileType = newDocFile?.type || undefined;
-                    // Upload to Firebase Storage if there's a raw file
                     if (newDocFile?.rawFile) {
                       try {
                         setNewDocUploading(true);
