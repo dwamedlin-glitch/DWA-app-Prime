@@ -1,6 +1,6 @@
-/* DWA v1.2.7 */
+/* DWA v1.3.0 */
 import { useState, useEffect, useRef } from "react";
-import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments } from "../lib/firebase";
+import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, saveAnnouncements as saveAnnouncementsToFirestore, loadAnnouncements as loadAnnouncementsFromFirestore } from "../lib/firebase";
 
 // ── PLACEHOLDER BASE64 ASSETS (replace with real ones before deploy) ──
 const TEXTURE_B64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E";
@@ -874,12 +874,18 @@ export default function DWAApp() {
     return () => unsubscribe();
   }, []);
 
+  // ── LOAD ANNOUNCEMENTS FROM FIRESTORE ──
+  useEffect(() => {
+    loadAnnouncementsFromFirestore().then((anns) => {
+      if (anns && anns.length > 0) setAnnouncements(anns);
+    }).catch(() => {});
+  }, []);
+
   // ── FETCH DATA FROM API (connected to admin CMS) ──
   useEffect(() => {
     fetch("/api/data")
       .then((r) => r.json())
       .then((data) => {
-        if (data.announcements) setAnnouncements(data.announcements.filter(a => ![1,2,3,4].includes(a.id)));
         if (data.stewards) {
           // Transform steward data from API format to component format
           const mapped = data.stewards.map((s) => ({
@@ -1073,16 +1079,12 @@ export default function DWAApp() {
     }
   };
 
-  // ── Save announcements to /api/data ──
+  // ── Save announcements to Firestore ──
   const saveAnnouncements = async (anns) => {
     try {
-      await fetch("/api/data", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ announcements: anns }),
-      });
+      await saveAnnouncementsToFirestore(anns);
     } catch (e) {
-      console.log("Failed to save announcements:", e);
+      console.log("Failed to save announcements to Firestore:", e);
     }
   };
 
