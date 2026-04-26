@@ -1,6 +1,6 @@
-/* DWA v1.3.0 */
+/* DWA v1.4.0 */
 import { useState, useEffect, useRef } from "react";
-import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority } from "../lib/firebase";
+import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority, registerUser, loginUser, logoutUser, onAuthChange, saveUserProfile, getUserProfile, subscribeToPendingMembers, approveMember, denyMember } from "../lib/firebase";
 
 // ── PLACEHOLDER BASE64 ASSETS (replace with real ones before deploy) ──
 const TEXTURE_B64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E";
@@ -743,6 +743,11 @@ export default function DWAApp() {
   const [regPassword, setRegPassword] = useState("");
   const [regConfirm, setRegConfirm] = useState("");
   const [regError, setRegError] = useState("");
+  const [regLocation, setRegLocation] = useState("Jersey City");
+  const [regPhone, setRegPhone] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [currentUid, setCurrentUid] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [memberEmails, setMemberEmails] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
 
@@ -838,9 +843,9 @@ export default function DWAApp() {
   const [bannedUsers, setBannedUsers] = useState([]);
   const floorPostRef = useRef(null);
   const floorReplyRef = useRef(null);
-  const currentUserName = regName || email.split("@")[0] || "Member";
-  const currentUserLocation = "Jersey City"; // default — would come from profile
-  const currentUserRole = isAdmin ? "officer" : "member";
+  const currentUserName = userProfile?.name || regName || email.split("@")[0] || "Member";
+  const currentUserLocation = userProfile?.location || "Jersey City";
+  const currentUserRole = isAdmin ? "officer" : (userProfile?.role === "steward" ? "steward" : "member");
   const isCurrentUserBanned = bannedUsers.some(b => b.name === currentUserName);
 
   // Subscribe to Firestore floor posts
@@ -874,6 +879,22 @@ export default function DWAApp() {
   useEffect(() => {
     const unsubscribe = subscribeToBannedUsers((banned) => {
       setBannedUsers(banned);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Subscribe to pending members from Firestore
+  useEffect(() => {
+    const unsubscribe = subscribeToPendingMembers((pending) => {
+      setPendingMembers(pending.map(p => ({
+        id: p.uid,
+        uid: p.uid,
+        name: p.name,
+        email: p.email,
+        location: p.location || "",
+        phone: p.phone || "",
+        submittedAt: p.memberSince || p.createdAt || "",
+      })));
     });
     return () => unsubscribe();
   }, []);
@@ -1022,33 +1043,72 @@ export default function DWAApp() {
     backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center", paddingRight: 36,
   });
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password) { setLoginError(true); return; }
     const e = email.toLowerCase().trim();
-    if (e === SUPER_ADMIN_EMAIL) setRole("super");
-    else if (adminEmails.map(a => a.toLowerCase()).includes(e)) setRole("admin");
-    else setRole("member");
-    setCurrentUserEmail(e);
-    setLoggedIn(true);
+    setAuthLoading(true);
+    setLoginError(false);
+    try {
+      const cred = await loginUser(e, password);
+      const profile = await getUserProfile(cred.user.uid);
+      if (profile && profile.status === "pending") {
+        setAuthLoading(false);
+        setAuthView("pending");
+        return;
+      }
+      if (profile && profile.status !== "approved") {
+        setAuthLoading(false);
+        setLoginError(true);
+        return;
+      }
+      setCurrentUid(cred.user.uid);
+      setUserProfile(profile);
+      setCurrentUserEmail(e);
+      if (e === SUPER_ADMIN_EMAIL) setRole("super");
+      else if (adminEmails.map(a => a.toLowerCase()).includes(e)) setRole("admin");
+      else if (profile?.role === "steward") setRole("admin");
+      else setRole("member");
+      setLoggedIn(true);
+      setAuthLoading(false);
+    } catch (err) {
+      setAuthLoading(false);
+      setLoginError(true);
+    }
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     const name = regName.trim();
     const e = regEmail.toLowerCase().trim();
     if (!name) { setRegError("Please enter your full name."); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) { setRegError("Please enter a valid email address."); return; }
     if (regPassword.length < 8) { setRegError("Password must be at least 8 characters."); return; }
     if (regPassword !== regConfirm) { setRegError("Passwords don't match."); return; }
-    if (e === SUPER_ADMIN_EMAIL || adminEmails.map(a => a.toLowerCase()).includes(e) || memberEmails.includes(e)) {
-      setRegError("An account with that email already exists."); return;
+    setAuthLoading(true);
+    setRegError("");
+    try {
+      const cred = await registerUser(e, regPassword);
+      // Create profile in Firestore with "pending" status
+      await saveUserProfile(cred.user.uid, {
+        name,
+        email: e,
+        location: regLocation,
+        phone: regPhone.replace(/\D/g, "") || "",
+        role: "member",
+        status: "pending",
+        memberSince: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+        createdAt: new Date().toISOString(),
+      });
+      setAuthLoading(false);
+      setRegName(""); setRegEmail(""); setRegPassword(""); setRegConfirm(""); setRegPhone(""); setRegLocation("Jersey City"); setRegError("");
+      setAuthView("pending");
+    } catch (err) {
+      setAuthLoading(false);
+      if (err.code === "auth/email-already-in-use") {
+        setRegError("An account with that email already exists.");
+      } else {
+        setRegError(err.message || "Registration failed. Please try again.");
+      }
     }
-    if (pendingMembers.some(p => p.email.toLowerCase() === e)) {
-      setRegError("A request with that email is already pending."); return;
-    }
-    const submittedAt = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    setPendingMembers(prev => [...prev, { name, email: e, submittedAt }]);
-    setRegName(""); setRegEmail(""); setRegPassword(""); setRegConfirm(""); setRegError("");
-    setAuthView("pending");
   };
 
   const handleGrievance = async () => {
@@ -1427,7 +1487,7 @@ export default function DWAApp() {
             </div>
           </div>
           <div style={{ marginTop: 24 }}>
-            <button onClick={() => { setLoggedIn(false); setRole("member"); setCurrentUserEmail(""); setEmail(""); setPassword(""); setShowSettingsPanel(false); }} style={{ ...btnOutline, display: "flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}>
+            <button onClick={() => { logoutUser(); setLoggedIn(false); setRole("member"); setCurrentUserEmail(""); setEmail(""); setPassword(""); setShowSettingsPanel(false); setCurrentUid(null); setUserProfile(null); }} style={{ ...btnOutline, display: "flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}>
               <SectionIcon icon="logout" size={15} /> SIGN OUT
             </button>
           </div>
@@ -1503,7 +1563,7 @@ export default function DWAApp() {
                   </div>
                   <span onClick={() => alert("Contact your steward to reset your password.")} style={{ ...f(12, 400, 'serif'), color: "var(--gold)", cursor: "pointer", fontStyle: "italic" }}>Forgot password?</span>
                 </div>
-                <button style={btnGold()} onClick={handleLogin}>SIGN IN</button>
+                <button style={btnGold(authLoading)} disabled={authLoading} onClick={handleLogin}>{authLoading ? "SIGNING IN…" : "SIGN IN"}</button>
               </div>
               <div className="gold-rule" style={{ width: "100%", margin: "28px 0 16px" }} />
               <div style={{ ...f(13, 400, 'serif'), color: "var(--text2)", textAlign: "center" }}>
@@ -1527,6 +1587,19 @@ export default function DWAApp() {
                   <label style={lbl}>Email Address</label>
                   <input style={inp(!!regError && !regEmail.trim())} value={regEmail} onChange={e => setRegEmail(e.target.value)} placeholder="your@email.com" />
                 </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div style={col(6)}>
+                    <label style={lbl}>Location</label>
+                    <select style={dropStyle()} value={regLocation} onChange={e => setRegLocation(e.target.value)}>
+                      <option>Jersey City</option>
+                      <option>Florence</option>
+                    </select>
+                  </div>
+                  <div style={col(6)}>
+                    <label style={lbl}>Phone <span style={{ color: "var(--text3)", fontWeight: 400 }}>(optional)</span></label>
+                    <input style={inp()} type="tel" value={regPhone} onChange={e => setRegPhone(e.target.value)} placeholder="Phone number" />
+                  </div>
+                </div>
                 <div style={col(6)}>
                   <label style={lbl}>Password</label>
                   <input style={inp(!!regError && !regPassword)} type="password" placeholder="At least 8 characters" value={regPassword} onChange={e => setRegPassword(e.target.value)} />
@@ -1536,7 +1609,7 @@ export default function DWAApp() {
                   <input style={inp(!!regError && regConfirm !== regPassword)} type="password" placeholder="Repeat password" value={regConfirm} onChange={e => setRegConfirm(e.target.value)} />
                 </div>
                 {regError && <div style={{ ...f(12, 400, 'serif'), color: "var(--red)", fontStyle: "italic" }}>{regError}</div>}
-                <button style={btnGold()} onClick={handleRegister}>SUBMIT REQUEST</button>
+                <button style={btnGold(authLoading)} disabled={authLoading} onClick={handleRegister}>{authLoading ? "CREATING ACCOUNT…" : "SUBMIT REQUEST"}</button>
               </div>
               <div className="gold-rule" style={{ width: "100%", margin: "24px 0 12px" }} />
               <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", textAlign: "center", fontStyle: "italic" }}>
@@ -2938,13 +3011,13 @@ export default function DWAApp() {
                 <div style={{ ...f(12, 700), color: "var(--gold)", marginBottom: 10 }}>Pending ({pendingMembers.length})</div>
                 {pendingMembers.length === 0 && <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>No pending requests.</div>}
                 {pendingMembers.map(m => (
-                  <div key={m.email} style={{ ...col(6), padding: "10px 0", borderBottom: "1px solid var(--seam)" }}>
+                  <div key={m.uid || m.email} style={{ ...col(6), padding: "10px 0", borderBottom: "1px solid var(--seam)" }}>
                     <div style={{ ...f(14, 600), color: "var(--text)" }}>{m.name}</div>
-                    <div style={{ ...f(12, 400), color: "var(--text3)" }}>{m.email}</div>
+                    <div style={{ ...f(12, 400), color: "var(--text3)" }}>{m.email}{m.location ? ` · ${m.location}` : ""}</div>
                     <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>Submitted {m.submittedAt}</div>
                     <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                      <button onClick={() => { setConfirmModal({ title: `Approve ${m.name}?`, message: `${m.name} will become a union member.`, onConfirm: () => { setMemberEmails(prev => [...prev, m.email]); setPendingMembers(prev => prev.filter(p => p.email !== m.email)); setToastMsg({ message: `${m.name} approved!` }); } }); }} style={{ flex: 1, padding: "8px", background: "rgba(45,122,79,0.15)", border: "1px solid var(--green)", borderRadius: 6, color: "var(--green)", ...f(11, 700), cursor: "pointer" }}>APPROVE</button>
-                      <button onClick={() => { setConfirmModal({ title: `Deny ${m.name}?`, message: "This will reject their membership request.", danger: true, onConfirm: () => { const removed = m; setPendingMembers(prev => prev.filter(p => p.email !== m.email)); setToastMsg({ message: `${m.name} denied`, onUndo: () => { setPendingMembers(prev => [...prev, removed]); } }); } }); }} style={{ flex: 1, padding: "8px", background: "rgba(192,57,43,0.1)", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, color: "var(--red)", ...f(11, 700), cursor: "pointer" }}>DENY</button>
+                      <button onClick={() => { setConfirmModal({ title: `Approve ${m.name}?`, message: `${m.name} will become a union member.`, onConfirm: async () => { if (m.uid) await approveMember(m.uid); setMemberEmails(prev => [...prev, m.email]); setToastMsg({ message: `${m.name} approved!` }); } }); }} style={{ flex: 1, padding: "8px", background: "rgba(45,122,79,0.15)", border: "1px solid var(--green)", borderRadius: 6, color: "var(--green)", ...f(11, 700), cursor: "pointer" }}>APPROVE</button>
+                      <button onClick={() => { setConfirmModal({ title: `Deny ${m.name}?`, message: "This will reject their membership request.", danger: true, onConfirm: async () => { if (m.uid) await denyMember(m.uid); setToastMsg({ message: `${m.name} denied` }); } }); }} style={{ flex: 1, padding: "8px", background: "rgba(192,57,43,0.1)", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, color: "var(--red)", ...f(11, 700), cursor: "pointer" }}>DENY</button>
                     </div>
                   </div>
                 ))}
