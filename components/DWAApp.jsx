@@ -931,10 +931,14 @@ export default function DWAApp() {
       if (list && list.length > 0) setSeniority(list);
     }).catch(() => {});
 
-    // Documents — if Firestore has saved docs, use those as the full list
+    // Documents — load user-added docs from Firestore and add to hardcoded defaults
     loadUploadedDocuments().then((saved) => {
       if (saved && saved.length > 0) {
-        setDocuments(saved);
+        // Only add docs that aren't hardcoded (id > 100, since user docs use Date.now())
+        const userDocs = saved.filter(d => d.id > 100);
+        if (userDocs.length > 0) {
+          setDocuments(prev => [...prev, ...userDocs]);
+        }
       }
     }).catch(() => {});
 
@@ -1142,10 +1146,11 @@ export default function DWAApp() {
   };
 
   // ── Save documents to Firestore ──
-  const HARDCODED_DOC_IDS = [1, 2, 3];
   const saveDocuments = async (docs) => {
     try {
-      await saveUploadedDocuments(docs);
+      // Only save user-added docs to Firestore (not hardcoded ones)
+      const userDocs = docs.filter(d => typeof d.id === "number" && d.id > 100);
+      await saveUploadedDocuments(userDocs);
     } catch (e) { console.log("Failed to save documents:", e); }
   };
   // ── Save announcements to Firestore ──
