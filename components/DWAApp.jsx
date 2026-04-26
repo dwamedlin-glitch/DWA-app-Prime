@@ -1,6 +1,6 @@
 /* DWA v1.4.0 */
 import { useState, useEffect, useRef } from "react";
-import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority, registerUser, loginUser, logoutUser, onAuthChange, saveUserProfile, getUserProfile, subscribeToPendingMembers, approveMember, denyMember } from "../lib/firebase";
+import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, uploadDocumentFile, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority, registerUser, loginUser, logoutUser, onAuthChange, saveUserProfile, getUserProfile, subscribeToPendingMembers, approveMember, denyMember } from "../lib/firebase";
 
 // ── PLACEHOLDER BASE64 ASSETS (replace with real ones before deploy) ──
 const TEXTURE_B64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E";
@@ -725,7 +725,8 @@ export default function DWAApp() {
   const [newDocName, setNewDocName] = useState("");
   const [newDocCat, setNewDocCat] = useState("Contract & Bylaws");
   const [newDocDesc, setNewDocDesc] = useState("");
-  const [newDocFile, setNewDocFile] = useState(null); // { name, size, url, type }
+  const [newDocFile, setNewDocFile] = useState(null); // { name, size, url, type, rawFile }
+  const [newDocUploading, setNewDocUploading] = useState(false);
   const [docUploadDrag, setDocUploadDrag] = useState(false);
   const [editMeeting, setEditMeeting] = useState({ ...nextMeeting });
   const [editZoom, setEditZoom] = useState({ ...zoomInfo });
@@ -3040,7 +3041,7 @@ export default function DWAApp() {
                     const url = URL.createObjectURL(file);
                     const sizeKb = file.size < 1024 * 1024 ? `${Math.round(file.size / 1024)} KB` : `${(file.size / 1024 / 1024).toFixed(1)} MB`;
                     const ext = file.name.split(".").pop()?.toLowerCase() || "file";
-                    setNewDocFile({ name: file.name, size: sizeKb, url, type: ext });
+                    setNewDocFile({ name: file.name, size: sizeKb, url, type: ext, rawFile: file });
                     if (!newDocName.trim()) setNewDocName(file.name.replace(/\.[^.]+$/, ""));
                   }}
                   style={{
@@ -3061,7 +3062,7 @@ export default function DWAApp() {
                       const url = URL.createObjectURL(file);
                       const sizeKb = file.size < 1024 * 1024 ? `${Math.round(file.size / 1024)} KB` : `${(file.size / 1024 / 1024).toFixed(1)} MB`;
                       const ext = file.name.split(".").pop()?.toLowerCase() || "file";
-                      setNewDocFile({ name: file.name, size: sizeKb, url, type: ext });
+                      setNewDocFile({ name: file.name, size: sizeKb, url, type: ext, rawFile: file });
                       if (!newDocName.trim()) setNewDocName(file.name.replace(/\.[^.]+$/, ""));
                     }}
                   />
@@ -3107,18 +3108,34 @@ export default function DWAApp() {
                 </div>
 
                 {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>✓ Document added!</div>}
+                {newDocUploading && <div style={{ ...f(12, 600), color: "var(--gold)" }}>⏳ Uploading file...</div>}
                 <button
-                  style={btnGold(!newDocName.trim())}
-                  disabled={!newDocName.trim()}
-                  onClick={() => {
+                  style={btnGold(!newDocName.trim() || newDocUploading)}
+                  disabled={!newDocName.trim() || newDocUploading}
+                  onClick={async () => {
                     const now = new Date();
-                    const updated = now.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+                    const updatedStr = now.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+                    let fileUrl = undefined;
+                    let fileType = newDocFile?.type || undefined;
+                    // Upload to Firebase Storage if there's a raw file
+                    if (newDocFile?.rawFile) {
+                      try {
+                        setNewDocUploading(true);
+                        fileUrl = await uploadDocumentFile(newDocFile.rawFile);
+                      } catch (err) {
+                        console.error("Upload failed:", err);
+                        alert("File upload failed. Please try again.");
+                        setNewDocUploading(false);
+                        return;
+                      }
+                      setNewDocUploading(false);
+                    }
                     const newDoc = {
                       id: Date.now(), name: newDocName, category: newDocCat,
-                      size: newDocFile?.size || "—", updated,
+                      size: newDocFile?.size || "—", updated: updatedStr,
                       desc: newDocDesc || undefined,
-                      fileUrl: newDocFile?.url || undefined,
-                      fileType: newDocFile?.type || undefined,
+                      fileUrl,
+                      fileType,
                     };
                     setDocuments(prev => {
                       const updated = [...prev, newDoc];
@@ -3128,7 +3145,7 @@ export default function DWAApp() {
                     setNewDocName(""); setNewDocDesc(""); setNewDocFile(null);
                     saveFlash(() => {});
                   }}
-                >ADD DOCUMENT</button>
+                >{newDocUploading ? "UPLOADING..." : "ADD DOCUMENT"}</button>
               </div>
 
               {/* Existing docs list */}
