@@ -1,77 +1,188 @@
-/* DWA API Route: /api/data
- *
- * This file goes in: pages/api/data.js
- *
- * It handles:
- *   GET  → Reads all app data (announcements, documents, stewards, etc.) from Firebase
- *   POST → Saves updated data (like documents) back to Firebase
- *
- * Make sure your Firebase config is set up in lib/firebaseAdmin.js (see below)
- */
-
-import { getDatabase } from "firebase-admin/database";
-import { initializeApp, getApps, cert } from "firebase-admin/app";
-
-// ── Initialize Firebase Admin (only once) ──
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      // The private key comes from .env and needs newlines restored
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-    }),
-    databaseURL: process.env.FIREBASE_DATABASE_URL,
+export default function handler(req, res) {
+  res.status(200).json({
+  "announcements": [
+    {
+      "id": 1,
+      "title": "Contract Ratification Vote – May 15",
+      "body": "All members are required to attend the ratification vote on May 15th. This is your contract — your voice matters. Details will be posted at the facility and sent via text reminder.",
+      "titleEs": "Votación de Ratificación del Contrato – 15 de Mayo",
+      "bodyEs": "Todos los miembros deben asistir a la votación de ratificación el 15 de mayo. Este es su contrato — su voz importa. Los detalles se publicarán en las instalaciones y se enviarán por recordatorio de texto.",
+      "urgent": true
+    },
+    {
+      "id": 2,
+      "title": "Overtime Policy Update",
+      "body": "Management has proposed changes to the overtime policy. The union is reviewing the proposal and will provide a full update at the next membership meeting. Any questions, contact your steward.",
+      "titleEs": "Actualización de la Política de Horas Extra",
+      "bodyEs": "La gerencia ha propuesto cambios a la política de horas extra. El sindicato está revisando la propuesta y brindará una actualización completa en la próxima reunión de miembros. Cualquier pregunta, comuníquese con su delegado.",
+      "urgent": false
+    },
+    {
+      "id": 3,
+      "title": "Union Picnic – June 14",
+      "body": "Our annual summer picnic is back! Join us June 14th for food, games, and fellowship with your brothers and sisters. Bring the family. Location TBD — watch for flyers.",
+      "titleEs": "Picnic del Sindicato – 14 de Junio",
+      "bodyEs": "¡Nuestro picnic anual de verano ha vuelto! Únase a nosotros el 14 de junio para disfrutar de comida, juegos y compañerismo con sus hermanos y hermanas. Traiga a la familia. Lugar por confirmar — esté atento a los volantes.",
+      "urgent": false
+    },
+    {
+      "id": 4,
+      "title": "New Steward Training – May 22",
+      "body": "All stewards and interested members are invited to attend new steward training on May 22nd. Learn grievance procedures, rights on the job, and how to protect your coworkers.",
+      "titleEs": "Capacitación para Nuevos Delegados – 22 de Mayo",
+      "bodyEs": "Todos los delegados y miembros interesados están invitados a asistir a la capacitación para nuevos delegados el 22 de mayo. Aprenda sobre procedimientos de queja, derechos en el trabajo y cómo proteger a sus compañeros.",
+      "urgent": false
+    }
+  ],
+  "stewards": [
+    {
+      "id": 5,
+      "name": "Anthony Santiago",
+      "title": "Shop Steward",
+      "dept": "",
+      "shifts": "",
+      "phone": "3473867440"
+    },
+    {
+      "id": 6,
+      "name": "Greg Van Peenan",
+      "title": "Shop Steward",
+      "dept": "",
+      "shifts": "",
+      "phone": "9736041930"
+    },
+    {
+      "id": 10,
+      "name": "Kyle Clark",
+      "title": "Shop Steward",
+      "dept": "Florence",
+      "shifts": "",
+      "phone": "6094004892"
+    },
+    {
+      "id": 11,
+      "name": "James Walker",
+      "title": "Shop Steward",
+      "dept": "",
+      "shifts": "",
+      "phone": "6092514397"
+    },
+    {
+      "id": 12,
+      "name": "Tyrik Darby",
+      "title": "Shop Steward",
+      "dept": "",
+      "shifts": "",
+      "phone": "2013750448"
+    }
+  ],
+  "documents": [
+    {
+      "id": 1,
+      "name": "Union Contract 2025–2028",
+      "category": "Contract & Bylaws",
+      "size": "2.4 MB",
+      "updated": "Sept 2025"
+    },
+    {
+      "id": 2,
+      "name": "Union Bylaws",
+      "category": "Contract & Bylaws",
+      "size": "890 KB",
+      "updated": "Mar 2024"
+    }
+  ],
+  "grievanceEmails": [
+    "grievance@dwaunion.org",
+    "president@dwaunion.org",
+    "secretary@dwaunion.org"
+  ],
+  "cbaArticles": [
+    {
+      "id": 1,
+      "title": "Recognition",
+      "body": "THIS AGREEMENT, MADE AND ENTERED INTO EFFECTIVE THIS 1st day of September 2025, by and between Cream-O-Land Dairy (hereinafter referred to as \"Company\") and the Dairy Workers Association (hereinafter referred to as \"Union\").\n\nA. The Company recognizes the Union as the sole and exclusive bargaining agency for all employees in the bargaining unit.\n\nB. All new employees shall become members of the Union after a probationary period of ninety (90) calendar days.\n\nC. All union employees shall be maintained in their membership in the Union in good standing as a condition of employment.\n\nD. The bargaining unit shall consist of the following job titles:\n1. Wholesale Route Drivers\n2. School Route Drivers\n3. Warehouse Personnel\n4. Utility Drivers\n5. Driver Jumpers\n\nE. Equal Employment Opportunity: Our Company is committed to the full utilization of all human resources and will not discriminate against any employee on the basis of race, color, religion, sex, national origin, age, or disability."
+    },
+    {
+      "id": 2,
+      "title": "Dues and Initiation Fees",
+      "body": "The company will deduct dues and initiation fees from the paycheck of each union member. Dues shall be deducted weekly from each employee's paycheck and forwarded to the Union Treasurer within ten (10) days. An initiation fee of $50.00 shall be deducted from new members upon joining the Union."
+    },
+    {
+      "id": 3,
+      "title": "Days of Work",
+      "body": "The regular work week for School Route Drivers shall be Monday through Friday. The regular work week for Wholesale Route Drivers shall be Monday through Saturday. The regular work week for Warehouse Personnel shall be as scheduled by the Company.\n\nOvertime shall be paid at one and one-half (1½) times the regular rate for all hours worked in excess of forty (40) hours in a workweek for hourly employees."
+    },
+    {
+      "id": 4,
+      "title": "Vacations",
+      "body": "A. For purposes of determining vacation accrual/entitlement, an employee's anniversary date shall be used.\n\nB. Vacations shall be taken anytime from January through December subject to the \"Black Out\" dates established by the Company.\n\nC. Vacation shall be selected by the end of December for the coming year. The Union will be given the list of available vacation weeks.\n\nD. Date selection goes by Union seniority.\n\nE. Upon completion of one (1) year of service, an employee will receive five (5) days of vacation.\n\nF. Upon completion of two, three, and four years of service, an employee will receive ten (10) days of vacation.\n\nG. Upon completion of five through nine years of service, an employee will receive fifteen (15) days of vacation.\n\nH. Upon completion of ten through fourteen years of service, an employee will receive twenty (20) days of vacation.\n\nI. Upon completion of the fifteenth year of service and each year thereafter, the employee will receive twenty-five (25) days of vacation.\n\nJ. Vacation accrual upon the completion of any year of service according to the above schedule shall be prorated based on any month in which an employee did not work at least fifteen (15) days.\n\nK. Any employee who voluntarily leaves after giving two weeks written notice of resignation and works the two weeks shall receive prorated vacation pay.\n\nL. All vacation pay shall be paid on the regular payday before an employee leaves on vacation.\n\nM. Vacation pay for all union employees regularly scheduled for five days in a workweek will be calculated based on the employee's daily rate times the number of vacation days."
+    },
+    {
+      "id": 5,
+      "title": "Payment Upon Voluntary Resignation",
+      "body": "A. Any employee who resigns his employment after one (1) year of service shall receive two-thirds (2/3) of a week's pay.\n\nB. Any employee who resigns his employment after two (2) years of service shall receive five-sixths (5/6) of a week's pay.\n\nC. Any employee who resigns his employment after six (6) years of service shall receive one and one-quarter (1¼) weeks' pay.\n\nD. Any employee who resigns his employment after ten (10) years of service shall receive one and two-thirds (1⅔) weeks' pay.\n\nE. If employee resigns, he will agree to give the Company two (2) weeks written notice in advance of leaving."
+    },
+    {
+      "id": 6,
+      "title": "Sick Day / Personal Days",
+      "body": "A. Effective 1/1/26: the time period from January 1 through December 31 will be the sick/personal pay period.\n\nB. In the first full pay period of the following February 28, all Drivers and Warehouse employees who worked the full prior calendar year shall receive their sick/personal day payment.\n\nC. In those weeks where a School Route driver works fewer than five (5) days due to school not being in session, those days shall not count against the driver's sick/personal day entitlement.\n\nD. Paid sick and personal days for Drivers shall be calculated based on the employee's most recent daily rate.\n\nE. Any driver who, during the course of the day's work, is taken ill shall be paid one half (½) day's pay.\n\nF. Exceptions will be made to the sick/personal pay period on an individual basis as needed in the case of extreme illness.\n\nG. In the event any Employee is absent from work for three or more consecutive days and provides a doctor's note, those days shall be considered excused absences."
+    },
+    {
+      "id": 7,
+      "title": "Seniority, Promotions, or Job Transfers",
+      "body": "A. The Company will provide a seniority list to the Union upon request.\n\nB. Seniority shall be retroactive to the date of hire.\n\nC. Promotions and job transfers will be made in accordance with seniority and ability to perform the work.\n\nD. All bids on job transfers or promotions will be discussed with a Union Executive and will be posted for seven (7) days.\n\nE. Promotions refer to transferring from one bargaining unit position to another bargaining unit position at a higher rate of pay.\n\nF. Job transfer refers to transferring from one bargaining unit position to another bargaining unit position at the same or lower rate of pay.\n\nG. Whenever a bargaining unit position is made available, it will be bid on within 30 days. All union employees who wish to be considered must submit a written bid.\n\nH. The Company shall post any position to be bid on for a minimum of seven (7) consecutive days.\n\nI. The Union employee has the right to have a union representative present prior to position bid opening.\n\nJ. Bargaining unit jobs to be bid on before outsiders are hired.\n\nK. Layoffs by Union seniority.\n\nL. Routes will be filled by successful bidder within 30 days depending on manpower availability.\n\nM. If an employee's employment with the Company terminates, the employee's seniority shall end. If the employee is rehired within one (1) year, their seniority shall be restored."
+    },
+    {
+      "id": 8,
+      "title": "Union Rights and Grievance Procedures",
+      "body": "A. The Union and the company agree that all grievances shall be handled in the following manner.\n\nB. No employee shall be discriminated against for filing a grievance under this Agreement.\n\nC. For purposes of this Agreement, a \"grievance\" means any dispute or difference between the parties concerning the interpretation or application of any provision of this Agreement.\n\nD. Grievance Steps:\n\ni. Step One: The grievance shall first be presented in writing to the Director of Operations within five (5) calendar days of the occurrence giving rise to the grievance.\n\nii. Step Two: If the Union is dissatisfied with the determination of the Director of Operations, the grievance may be appealed to the Vice President within ten (10) calendar days.\n\niii. Step Three: If the Union is dissatisfied with the determination of the Vice President, the matter may be submitted to binding arbitration within twenty (20) calendar days.\n\niv. The arbitrator's decision shall be in writing, final, and binding on all parties.\n\nv. The cost of arbitration will be divided equally between the Company and the Union."
+    },
+    {
+      "id": 9,
+      "title": "Discipline",
+      "body": "No employee who has been employed past the probationary period shall be disciplined or discharged without just cause.\n\nAll of the below are reasons for dismissal which must be discussed with the Union representative before dismissal:\n\nA. Theft of company or customer property.\nB. Intoxication or drugs during working hours or on Company property.\nC. Direct hostile use of profanity towards Supervisors or Management.\nD. Unauthorized persons on company vehicles.\nE. Failure to report property damage, truck damage, personal injury, and robbery immediately.\nF. Intentional destruction or loss of Company property.\nG. Any driver the Company's Insurance Company will not insure.\nH. Any driver who loses their driver's license for thirty (30) days or more.\n\nProgressive Discipline (for starred offenses):\n1st offense – Written warning\n2nd offense – Written warning\n3rd offense – Two (2) day suspension without pay\n4th offense – Dismissal\n\nO. Unexcused Sick Days — Each warning shall be held in effect for six (6) months.\nP. Driver must complete full work for the day unless Company approves otherwise.\nQ. Starting time violations — all union employees must report to work on time.\nR. Dress code violations — all union employees shall dress in a presentable manner.\n\nProgressive Discipline Note: The Company will remove a step of progressive discipline for each six (6) months an employee goes without committing the same offense."
+    },
+    {
+      "id": 10,
+      "title": "Management Rights",
+      "body": "A. Management and the conduct of business for the Company is vested solely and exclusively in the Company, subject to the terms of this Agreement.\n\nB. Management reserves the right to call special meetings with the Union as long as proper time and notice is given.\n\nC. The Company reserves the right to make any changes on routes when deemed necessary by the Company.\n\nD. Management reserves the right to make any changes it warrants in working procedures when deemed necessary, subject to bargaining obligations."
+    },
+    {
+      "id": 11,
+      "title": "Paid Holidays",
+      "body": "There shall be ten (10) paid holidays:\n1. New Year's Day\n2. Memorial Day\n3. July 4th\n4. Labor Day\n5. Thanksgiving Day\n6. Christmas Day\n7. Presidents Day\n8. Good Friday\n9. Martin Luther King Jr. Day\n10. Veterans Day\n\nA. Drivers will receive a day's pay based on the driver's current daily pay.\n\nB. Warehouse hourly workers will receive one day's pay calculated at 8 straight hours' time.\n\nC. Employee must work the scheduled day before and the scheduled day after a holiday to receive holiday pay.\n\nD. There will be an additional day's pay for the union member's birthday. This pay will be paid in the first full payroll period following the member's birthday.\n\nE. The Company shall use reasonable efforts to make July 4th a non-work day."
+    },
+    {
+      "id": 12,
+      "title": "Department Classification & Pay",
+      "body": "WHOLESALE ROUTE DRIVERS AND DRIVER JUMPERS\n\nA. Drivers shall be paid on a daily rate. Minimum daily starting rates:\n• Non-CDL Driver: $220 per day\n• CDL Driver: $270 per day\n• Jumper: $320 per day\n\nB. Driver daily rate increases — $12 per day each year (effective September 1) of the CBA.\n\nDrivers who work in excess of forty (40) hours in a workweek will be paid overtime, calculated on an hourly basis using the driver's daily rate divided by 8 hours.\n\nTraining: Employees assigned to train new hires shall receive an additional $50 per day for each day of training.\n\nWAREHOUSE PERSONNEL — RATES OF PAY\nMinimum starting rate for newly hired warehouse personnel: $17.50 per hour.\n\nExisting warehouse employees shall receive:\n• First payroll period following ratification: +$1.25/hr\n• First full pay period following September 1, 2026: +$1.25/hr\n• First full pay period following September 1, 2027: +$1.25/hr\n\nForklift/clamp operators: additional $0.50/hr when assigned.\n\nINCENTIVE AWARDS — Driver Safety Award\nIf a driver has no \"chargeable\" accidents for an entire contract year, the driver will be entitled to a safety bonus."
+    },
+    {
+      "id": 13,
+      "title": "Wholesale Shortages",
+      "body": "A. C.O.D. customers must pay on delivery. Shortages are the driver's responsibility.\n\nAfter two (2) written warnings a driver shall be subject to a two (2) day suspension without pay for COD shortages.\n\nB. All cash shortages and product shortages will be the driver's responsibility and must be resolved within seven (7) days.\n\nC. Disputes covering customer payments shall be resolved within a seven (7) day period after the driver presents written documentation.\n\nD. If the driver is robbed, he must call the police immediately and report the incident. Failure to do so will make the driver liable for the shortage."
+    },
+    {
+      "id": 14,
+      "title": "Leave of Absence",
+      "body": "All Union employees called in for National Guard or military duty shall be granted a leave of absence and shall return to their position upon completion of duty in accordance with applicable law.\n\nJURY DUTY\n1. All employees must notify HR within 48 hours of receiving jury duty notification.\n2. Wholesale Route drivers and School Route drivers shall receive one full day base pay without deduction for each day of jury duty.\n3. Warehouse employees will receive 8 hours straight pay.\n\nBEREAVEMENT\nEmployees bereaved by the death of an immediate family member (spouse, parents, children, siblings, grandparents, and in-laws) shall receive up to three (3) consecutive paid days off."
+    },
+    {
+      "id": 15,
+      "title": "Pension Plan",
+      "body": "The Pension Plan entered into between the Company and the Union shall remain in full force and effect during the term of this Agreement. The Company shall continue to make contributions to the Pension Plan as required by the Plan documents. Employees who are vested shall be entitled to pension benefits upon reaching retirement age as defined in the Plan."
+    },
+    {
+      "id": 16,
+      "title": "Hospitalization and Death Benefits",
+      "body": "The Company will offer major medical health insurance benefits to all eligible union employees and their families.\n\nAny increases to health insurance premiums shall be split between the Company and the individual employee.\n\nDeath Benefit: The Company shall maintain a death benefit for union employees as specified in the benefits summary. The beneficiary designated by the employee shall receive the death benefit upon the employee's death while employed."
+    },
+    {
+      "id": 17,
+      "title": "Miscellaneous",
+      "body": "A. The Company shall provide space for a Union bulletin board at each facility.\n\nB. Upon termination of employment, any discrepancies found on a route, uniforms, hand truck and other company equipment must be settled before the final paycheck is released.\n\nC. The Company agrees to provide $100 each calendar year to employees for one pair of work boots.\n\nD. The Company shall supply refreshments at all Company meetings.\n\nE. Breakdown pay shall be paid at the rate of $20.00 per hour for each hour or part thereof that an employee is delayed due to a vehicle breakdown.\n\nF. Driver must complete his route each day unless given Company approval.\n\nG. Perfect Attendance Bonus: Employees who have perfect attendance for a calendar year as defined in this Agreement will receive a bonus.\n\nH. Snow Policy: If there are 5 inches or more of snow (as recorded by the National Weather Service) prior to start of shift, management will make the call on whether to run.\n\nThis Agreement shall continue in full force and effect from September 1, 2025 until September 1, 2028."
+    }
+  ]
   });
-}
-
-const db = getDatabase();
-
-export default async function handler(req, res) {
-  // ── GET: Load all app data from Firebase ──
-  if (req.method === "GET") {
-    try {
-      const snapshot = await db.ref("/").once("value");
-      const data = snapshot.val() || {};
-      return res.status(200).json(data);
-    } catch (error) {
-      console.error("Firebase GET error:", error);
-      return res.status(500).json({ error: "Failed to load data" });
-    }
-  }
-
-  // ── POST: Save updated data to Firebase ──
-  if (req.method === "POST") {
-    try {
-      const body = req.body;
-
-      // Save documents if provided
-      if (body.documents) {
-        await db.ref("documents").set(body.documents);
-      }
-
-      // Save announcements if provided
-      if (body.announcements) {
-        await db.ref("announcements").set(body.announcements);
-      }
-
-      // Save stewards if provided
-      if (body.stewards) {
-        await db.ref("stewards").set(body.stewards);
-      }
-
-      // Save grievance emails if provided
-      if (body.grievanceEmails) {
-        await db.ref("grievanceEmails").set(body.grievanceEmails);
-      }
-
-      return res.status(200).json({ success: true });
-    } catch (error) {
-      console.error("Firebase POST error:", error);
-      return res.status(500).json({ error: "Failed to save data" });
-    }
-  }
-
-  // ── Other methods not allowed ──
-  return res.status(405).json({ error: "Method not allowed" });
 }
