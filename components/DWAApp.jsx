@@ -931,18 +931,12 @@ export default function DWAApp() {
       if (list && list.length > 0) setSeniority(list);
     }).catch(() => {});
 
-    // Documents — merge Firestore-saved docs with hardcoded ones
+    // Documents — load user-added docs from Firestore and merge with hardcoded
     loadUploadedDocuments().then((saved) => {
       if (saved && saved.length > 0) {
-        // One-time cleanup: remove old hardcoded docs that got stuck in Firestore (ids 1,2,3)
-        const cleaned = saved.filter(d => ![1, 2, 3].includes(d.id));
-        if (cleaned.length !== saved.length) {
-          // Save the cleaned list back to Firestore so this only happens once
-          saveUploadedDocuments(cleaned).catch(() => {});
-        }
         setDocuments(prev => {
-          const hardcodedIds = prev.map(dd => dd.id);
-          const newDocs = cleaned.filter(d => !hardcodedIds.includes(d.id));
+          const existingIds = prev.map(dd => dd.id);
+          const newDocs = saved.filter(d => !existingIds.includes(d.id));
           return [...prev, ...newDocs];
         });
       }
@@ -1152,8 +1146,13 @@ export default function DWAApp() {
   };
 
   // ── Save documents to Firestore ──
+  const HARDCODED_DOC_IDS = [1, 2, 3];
   const saveDocuments = async (docs) => {
-    try { await saveUploadedDocuments(docs); } catch (e) { console.log("Failed to save documents:", e); }
+    try {
+      // Only persist user-added docs, not hardcoded ones
+      const userDocs = docs.filter(d => !HARDCODED_DOC_IDS.includes(d.id));
+      await saveUploadedDocuments(userDocs);
+    } catch (e) { console.log("Failed to save documents:", e); }
   };
   // ── Save announcements to Firestore ──
   const saveAnnouncements = async (anns) => {
