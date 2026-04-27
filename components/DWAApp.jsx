@@ -744,6 +744,7 @@ export default function DWAApp() {
   const [newContactTitle, setNewContactTitle] = useState("Shop Steward");
   const [newContactDept, setNewContactDept] = useState("");
   const [newContactPhone, setNewContactPhone] = useState("");
+  const [editContactId, setEditContactId] = useState(null);
   const [newStewardTitle, setNewStewardTitle] = useState("Shop Steward");
 
   // ── THE FLOOR (Discussion Forum) ──
@@ -3254,9 +3255,9 @@ export default function DWAApp() {
 
           {tab === "admin" && adminSection === "contacts" && (
             <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
-              <AdminFormHeader title="DWA Contacts" />
+              <AdminFormHeader title={editContactId ? "Edit Contact" : "DWA Contacts"} />
               <div style={{ ...card({ padding: "16px" }), ...col(12) }}>
-                <div style={{ ...f(12, 700), color: "var(--gold)", letterSpacing: ".1em", marginBottom: 4 }}>Add Contact</div>
+                <div style={{ ...f(12, 700), color: "var(--gold)", letterSpacing: ".1em", marginBottom: 4 }}>{editContactId ? "Edit Contact" : "Add Contact"}</div>
                 <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginBottom: 4 }}>Contacts appear on the DWA Contacts page visible to all members.</div>
                 <div style={col(5)}>
                   <label style={lbl}>Full Name</label>
@@ -3270,6 +3271,7 @@ export default function DWAApp() {
                       <option>Vice President</option>
                       <option>Treasurer</option>
                       <option>Recording Secretary</option>
+                      <option>Secretary</option>
                       <option>Trustee</option>
                       <option>Sergeant at Arms</option>
                       <option>Shop Steward</option>
@@ -3284,12 +3286,24 @@ export default function DWAApp() {
                   <label style={lbl}>Phone</label>
                   <input style={inp()} type="tel" value={newContactPhone} onChange={e => setNewContactPhone(e.target.value)} placeholder="Phone number" />
                 </div>
-                {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>✓ Saved!</div>}
-                <button style={btnGold(!newContactName.trim())} disabled={!newContactName.trim()} onClick={() => {
-                  setStewardsData(prev => { const updated = [...prev, { id: Date.now(), name: newContactName.trim(), title: newContactTitle, dept: newContactDept.trim(), phone: newContactPhone.replace(/\D/g, "") }]; saveStewards(updated); return updated; });
-                  setNewContactName(""); setNewContactPhone(""); setNewContactDept(""); setNewContactTitle("Shop Steward");
-                  saveFlash(() => {});
-                }}>ADD CONTACT</button>
+                {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>{editContactId ? "✓ Contact updated!" : "✓ Saved!"}</div>}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button style={{ ...btnGold(!newContactName.trim()), flex: 1 }} disabled={!newContactName.trim()} onClick={() => {
+                    if (editContactId) {
+                      setStewardsData(prev => {
+                        const updated = prev.map(s => s.id === editContactId ? { ...s, name: newContactName.trim(), title: newContactTitle, dept: newContactDept.trim(), phone: newContactPhone.replace(/\D/g, "") } : s);
+                        saveStewards(updated);
+                        return updated;
+                      });
+                      setEditContactId(null);
+                    } else {
+                      setStewardsData(prev => { const updated = [...prev, { id: Date.now(), name: newContactName.trim(), title: newContactTitle, dept: newContactDept.trim(), phone: newContactPhone.replace(/\D/g, "") }]; saveStewards(updated); return updated; });
+                    }
+                    setNewContactName(""); setNewContactPhone(""); setNewContactDept(""); setNewContactTitle("Shop Steward");
+                    saveFlash(() => {});
+                  }}>{editContactId ? "UPDATE CONTACT" : "ADD CONTACT"}</button>
+                  {editContactId && <button onClick={() => { setEditContactId(null); setNewContactName(""); setNewContactPhone(""); setNewContactDept(""); setNewContactTitle("Shop Steward"); }} style={{ padding: "10px 14px", background: "none", border: "1px solid var(--seam)", borderRadius: 8, color: "var(--text3)", ...f(12, 700, 'bebas'), letterSpacing: ".1em", cursor: "pointer" }}>CANCEL</button>}
+                </div>
               </div>
               <div style={{ ...card({ padding: "16px" }), ...col(8) }}>
                 <div style={{ ...f(12, 700), color: "var(--gold)", marginBottom: 8 }}>Current Contacts ({stewardsData.length})</div>
@@ -3303,7 +3317,10 @@ export default function DWAApp() {
                       <div style={{ ...f(13, 600), color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
                       <div style={{ ...f(10, 400, "serif"), color: "var(--text3)", fontStyle: "italic" }}>{s.title}{s.dept ? ` · ${s.dept}` : ""}{s.phone ? ` · ${s.phone}` : ""}</div>
                     </div>
-                    <button onClick={() => { setConfirmModal({ title: `Remove ${s.name}?`, message: `${s.name} will be removed from DWA Contacts.`, danger: true, onConfirm: () => { const removed = s; setStewardsData(prev => { const updated = prev.filter(x => x.id !== s.id); saveStewards(updated); return updated; }); setToastMsg({ message: `${s.name} removed`, onUndo: () => { setStewardsData(prev => { const restored = [...prev, removed]; saveStewards(restored); return restored; }); } }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer", flexShrink: 0 }}>DEL</button>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+                      <button onClick={() => { setEditContactId(s.id); setNewContactName(s.name); setNewContactTitle(s.title || "Shop Steward"); setNewContactDept(s.dept || ""); setNewContactPhone(s.phone || ""); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ ...f(11, 700), color: "var(--gold)", background: "none", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>EDIT</button>
+                      <button onClick={() => { setConfirmModal({ title: `Remove ${s.name}?`, message: `${s.name} will be removed from DWA Contacts.`, danger: true, onConfirm: () => { const removed = s; setStewardsData(prev => { const updated = prev.filter(x => x.id !== s.id); saveStewards(updated); return updated; }); setToastMsg({ message: `${s.name} removed`, onUndo: () => { setStewardsData(prev => { const restored = [...prev, removed]; saveStewards(restored); return restored; }); } }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>DEL</button>
+                    </div>
                   </div>
                 ))}
               </div>
