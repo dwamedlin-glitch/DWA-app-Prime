@@ -1,0 +1,36 @@
+{
+  "name": "DWA - Dairy Workers Association",
+  "short_name": "DWA",
+  "description": "Dairy Workers Association member portal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a0f00",
+  "theme_color": "#1a0f00",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/images/dwa-pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/dwa-pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/dwa-pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/images/dwa-pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

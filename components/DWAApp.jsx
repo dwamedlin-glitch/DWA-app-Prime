@@ -4,7 +4,7 @@ import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply,
 
 // ── PLACEHOLDER BASE64 ASSETS (replace with real ones before deploy) ──
 const TEXTURE_B64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E";
-const LOGO_B64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 100'%3E%3Ctext x='50%25' y='70%25' font-family='serif' font-size='52' font-weight='bold' fill='%23c9922a' text-anchor='middle'%3EDWA%3C/text%3E%3C/svg%3E";
+const LOGO_B64 = "/images/dwa-logo-login.png";
 
 const ANNOUNCEMENTS = [];
 
@@ -633,6 +633,8 @@ const css = `
 
 export default function DWAApp() {
   const [loggedIn, setLoggedIn] = useState(false);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [role, setRole] = useState("member");
   const isAdmin = role === "super" || role === "admin";
   const isSuper = role === "super";
@@ -761,6 +763,24 @@ export default function DWAApp() {
 
   // Subscribe to Firestore floor posts
   // Apply light/dark theme class to html element
+  // PWA Install Prompt
+  useEffect(() => {
+    const handler = (e) => { e.preventDefault(); setDeferredInstallPrompt(e); setShowInstallBanner(true); };
+    window.addEventListener("beforeinstallprompt", handler);
+    if (window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone) {
+      setShowInstallBanner(false);
+    }
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    const result = await deferredInstallPrompt.userChoice;
+    if (result.outcome === "accepted") { setShowInstallBanner(false); }
+    setDeferredInstallPrompt(null);
+  };
+
   useEffect(() => {
     const html = document.documentElement;
     if (darkMode) {
@@ -2060,6 +2080,22 @@ export default function DWAApp() {
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg,transparent,var(--gold),transparent)" }} />
         <img src={LOGO_B64} alt="DWA" style={{ width: "min(150px, 36vw)", objectFit: "contain", position: "relative" }} />
       </div>
+      {/* Install App Banner */}
+      {showInstallBanner && (
+        <div style={{ margin: "12px 14px 0" }}>
+          <div style={{ ...card({ padding: "14px 16px" }), background: "linear-gradient(135deg, rgba(201,146,42,0.15), rgba(201,146,42,0.05))", border: "1.5px solid var(--gold)", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, overflow: "hidden", flexShrink: 0, border: "1px solid var(--gold)" }}>
+              <img src="/images/dwa-pwa-192.png" alt="DWA" style={{ width: "100%", height: "100%" }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ ...f(13, 700), color: "var(--cream)", letterSpacing: ".03em" }}>Install the App</div>
+              <div style={{ ...f(11, 400, 'serif'), color: "var(--text2)", marginTop: 2, fontStyle: "italic" }}>Add DWA to your home screen for quick access</div>
+            </div>
+            <button onClick={handleInstallClick} style={{ padding: "8px 14px", background: "linear-gradient(135deg,#a06b18,#c9922a,#e8b84b)", border: "none", borderRadius: 8, color: "#1a0f00", ...f(11, 700, 'bebas'), letterSpacing: ".12em", cursor: "pointer", flexShrink: 0 }}>INSTALL</button>
+            <div onClick={() => setShowInstallBanner(false)} style={{ position: "absolute", top: 6, right: 6, cursor: "pointer", color: "var(--text3)", ...f(16, 400), lineHeight: 1 }}>×</div>
+          </div>
+        </div>
+      )}
       <div style={{ margin: "12px 14px 0" }}>
         <div style={{ ...card({ padding: "14px 16px", borderLeft: "3px solid var(--gold)" }), display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--gold-dim)", border: "1px solid var(--seam)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gold)", flexShrink: 0 }}>
