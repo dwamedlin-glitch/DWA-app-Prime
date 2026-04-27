@@ -671,6 +671,7 @@ export default function DWAApp() {
   const [newSenDate, setNewSenDate] = useState("");
   const [newSenLocation, setNewSenLocation] = useState("Jersey City");
   const [senError, setSenError] = useState("");
+  const [editSenId, setEditSenId] = useState(null);
 
   const [rememberMe, setRememberMe] = useState(false);
   const [tab, setTab] = useState("home");
@@ -2973,7 +2974,7 @@ export default function DWAApp() {
             <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
               <AdminFormHeader title="Seniority List" />
               <div style={{ ...card({ padding: "16px" }), ...col(12) }}>
-                <div style={{ ...f(12, 700), color: "var(--gold)", letterSpacing: ".1em", marginBottom: 4 }}>Add Member</div>
+                <div style={{ ...f(12, 700), color: "var(--gold)", letterSpacing: ".1em", marginBottom: 4 }}>{editSenId ? "Edit Member" : "Add Member"}</div>
                 <div style={col(5)}><label style={lbl}>Full Name</label><input style={inp()} value={newSenName} onChange={e => setNewSenName(e.target.value)} placeholder="Employee full name" /></div>
                 <div style={col(5)}><label style={lbl}>Hire Date</label><input type="date" style={inp()} value={newSenDate} onChange={e => setNewSenDate(e.target.value)} /></div>
                 <div style={col(5)}><label style={lbl}>Location</label>
@@ -2982,14 +2983,21 @@ export default function DWAApp() {
                   </select>
                 </div>
                 {senError && <div style={{ ...f(12, 400, 'serif'), color: "var(--red)", fontStyle: "italic" }}>{senError}</div>}
-                {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>✓ Saved!</div>}
+                {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>{editSenId ? "✓ Updated!" : "✓ Saved!"}</div>}
+                <div style={{ display: "flex", gap: 8 }}>
                 <button style={btnGold(!newSenName.trim() || !newSenDate)} disabled={!newSenName.trim() || !newSenDate} onClick={() => {
                   if (!newSenName.trim()) { setSenError("Please enter a name."); return; }
                   if (!newSenDate) { setSenError("Please select a hire date."); return; }
-                  setSeniority(prev => { const updated = [...prev, { id: Date.now(), name: newSenName.trim(), hireDate: newSenDate, location: newSenLocation }]; saveSeniorityFn(updated); return updated; });
-                  setNewSenName(""); setNewSenDate(""); setNewSenLocation("Jersey City"); setSenError("");
+                  if (editSenId) {
+                    setSeniority(prev => { const updated = prev.map(x => x.id === editSenId ? { ...x, name: newSenName.trim(), hireDate: newSenDate, location: newSenLocation } : x); saveSeniorityFn(updated); return updated; });
+                  } else {
+                    setSeniority(prev => { const updated = [...prev, { id: Date.now(), name: newSenName.trim(), hireDate: newSenDate, location: newSenLocation }]; saveSeniorityFn(updated); return updated; });
+                  }
+                  setEditSenId(null); setNewSenName(""); setNewSenDate(""); setNewSenLocation("Jersey City"); setSenError("");
                   saveFlash(() => { });
-                }}>ADD TO SENIORITY LIST</button>
+                }}>{editSenId ? "UPDATE MEMBER" : "ADD TO SENIORITY LIST"}</button>
+                {editSenId && <button onClick={() => { setEditSenId(null); setNewSenName(""); setNewSenDate(""); setNewSenLocation("Jersey City"); setSenError(""); }} style={{ padding: "10px 14px", background: "none", border: "1px solid var(--seam)", borderRadius: 8, color: "var(--text3)", ...f(12, 700, 'bebas'), letterSpacing: ".1em", cursor: "pointer" }}>CANCEL</button>}
+                </div>
               </div>
               <div style={{ ...card({ padding: "16px" }), ...col(8) }}>
                 <div style={{ ...f(12, 700), color: "var(--gold)", letterSpacing: ".1em", marginBottom: 8 }}>Current Members ({seniority.length})</div>
@@ -2999,6 +3007,7 @@ export default function DWAApp() {
                       <div style={{ ...f(13, 600), color: "var(--text)" }}>{s.name}</div>
                       <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>{s.location} · {s.hireDate}</div>
                     </div>
+                    <button onClick={() => { setEditSenId(s.id); setNewSenName(s.name); setNewSenDate(s.hireDate); setNewSenLocation(s.location || "Jersey City"); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ ...f(11, 700), color: "var(--gold)", background: "none", border: "1px solid rgba(191,155,48,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>EDIT</button>
                     <button onClick={() => { setConfirmModal({ title: `Remove ${s.name}?`, message: `${s.name} will be removed from the seniority list.`, danger: true, onConfirm: () => { const removed = s; setSeniority(prev => { const updated = prev.filter(x => x.id !== s.id); saveSeniorityFn(updated); return updated; }); setToastMsg({ message: `${s.name} removed`, onUndo: () => { setSeniority(prev => { const restored = [...prev, removed]; saveSeniorityFn(restored); return restored; }); } }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>DEL</button>
                   </div>
                 ))}
