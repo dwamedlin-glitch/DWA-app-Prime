@@ -1,6 +1,6 @@
 /* DWA v1.4.0 */
 import { useState, useEffect, useRef } from "react";
-import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, uploadDocumentFile, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority, registerUser, loginUser, logoutUser, onAuthChange, saveUserProfile, getUserProfile, subscribeToPendingMembers, approveMember, denyMember } from "../lib/firebase";
+import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, uploadDocumentFile, uploadFloorPhoto, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority, registerUser, loginUser, logoutUser, onAuthChange, saveUserProfile, getUserProfile, subscribeToPendingMembers, approveMember, denyMember } from "../lib/firebase";
 
 // ── PLACEHOLDER BASE64 ASSETS (replace with real ones before deploy) ──
 const TEXTURE_B64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E";
@@ -755,8 +755,12 @@ export default function DWAApp() {
   const [floorLoading, setFloorLoading] = useState(true);
   const [floorReplyTo, setFloorReplyTo] = useState(null);
   const [bannedUsers, setBannedUsers] = useState([]);
+  const [floorPhoto, setFloorPhoto] = useState(null);
+  const [floorPhotoPreview, setFloorPhotoPreview] = useState(null);
+  const [floorPosting, setFloorPosting] = useState(false);
   const floorPostRef = useRef(null);
   const floorReplyRef = useRef(null);
+  const floorPhotoRef = useRef(null);
   const currentUserName = userProfile?.name || regName || email.split("@")[0] || "Member";
   const currentUserLocation = userProfile?.location || "Jersey City";
   const currentUserRole = isAdmin ? "officer" : (userProfile?.role === "steward" ? "steward" : "member");
@@ -2173,19 +2177,42 @@ export default function DWAApp() {
       return;
     }
     const text = floorPostRef.current?.value?.trim();
-    if (!text) return;
+    if (!text && !floorPhoto) return;
     if (floorPostRef.current) floorPostRef.current.value = "";
+    setFloorPosting(true);
     try {
+      let photoURL = null;
+      if (floorPhoto) {
+        photoURL = await uploadFloorPhoto(floorPhoto);
+      }
       await createFloorPost({
         author: currentUserName,
         location: currentUserLocation,
         role: currentUserRole,
-        text,
+        text: text || "",
+        photoURL,
       });
+      setFloorPhoto(null);
+      setFloorPhotoPreview(null);
     } catch (e) {
       console.error("Failed to post:", e);
       setToastMsg({ message: "Failed to post. Try again." });
+    } finally {
+      setFloorPosting(false);
     }
+  };
+
+  const handleFloorPhotoSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setToastMsg({ message: "Photo must be under 5MB." });
+      return;
+    }
+    setFloorPhoto(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setFloorPhotoPreview(ev.target.result);
+    reader.readAsDataURL(file);
   };
 
   const handleBanUser = (authorName, postId) => {
@@ -2308,9 +2335,20 @@ export default function DWAApp() {
             placeholder="What's on your mind?"
           />
         </div>
-        <div style={{ ...row("center", 0), justifyContent: "flex-end" }}>
-          <button onClick={handleFloorPost} style={{ ...btnGold(), width: "auto", padding: "10px 24px", ...f(12, 400, 'bebas'), letterSpacing: ".1em" }}>POST</button>
+        <div style={{ ...row("center", 0), justifyContent: "flex-end", gap: 8 }}>
+          <input ref={floorPhotoRef} type="file" accept="image/*" onChange={handleFloorPhotoSelect} style={{ display: "none" }} />
+          <button onClick={() => floorPhotoRef.current?.click()} style={{ background: "none", border: "1px solid var(--seam)", borderRadius: 8, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, color: "var(--text3)" }} title="Add photo">
+            <SectionIcon icon="doc" size={14} />
+            <span style={{ ...f(11, 400, 'bebas'), letterSpacing: ".06em" }}>PHOTO</span>
+          </button>
+          <button onClick={handleFloorPost} disabled={floorPosting} style={{ ...btnGold(), width: "auto", padding: "10px 24px", ...f(12, 400, 'bebas'), letterSpacing: ".1em", opacity: floorPosting ? 0.5 : 1 }}>{floorPosting ? "POSTING…" : "POST"}</button>
         </div>
+        {floorPhotoPreview && (
+          <div style={{ position: "relative", marginTop: 10 }}>
+            <img src={floorPhotoPreview} alt="Preview" style={{ width: "100%", maxHeight: 200, objectFit: "cover", borderRadius: 8, border: "1px solid var(--seam)" }} />
+            <button onClick={() => { setFloorPhoto(null); setFloorPhotoPreview(null); if (floorPhotoRef.current) floorPhotoRef.current.value = ""; }} style={{ position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,0.7)", border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", ...f(14, 700) }}>&times;</button>
+          </div>
+        )}
       </div>
       )}
 
@@ -2340,7 +2378,12 @@ export default function DWAApp() {
             </div>
           </div>
           {/* Post body */}
-          <div style={{ ...f(13, 400, 'serif'), color: "var(--text)", lineHeight: 1.65, marginBottom: 10 }}>{post.text}</div>
+          {post.text && <div style={{ ...f(13, 400, 'serif'), color: "var(--text)", lineHeight: 1.65, marginBottom: 10 }}>{post.text}</div>}
+          {post.photoURL && (
+            <div style={{ marginBottom: 10 }}>
+              <img src={post.photoURL} alt="Post photo" style={{ width: "100%", maxHeight: 300, objectFit: "cover", borderRadius: 8, border: "1px solid var(--seam)", cursor: "pointer" }} onClick={() => window.open(post.photoURL, "_blank")} />
+            </div>
+          )}
           {/* Post actions */}
           <div style={{ ...row("center", 0), justifyContent: "space-between", borderTop: "1px solid var(--seam)", paddingTop: 8 }}>
             <span
