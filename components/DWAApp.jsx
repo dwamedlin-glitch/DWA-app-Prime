@@ -678,6 +678,7 @@ export default function DWAApp() {
   const [sub, setSub] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(true);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
@@ -1524,7 +1525,10 @@ export default function DWAApp() {
                 </div>
                 <div style={col(6)}>
                   <label style={lbl}>Password</label>
-                  <input style={inp(loginError && !password)} type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()} />
+                  <div style={{ position: "relative" }}>
+                    <input style={{ ...inp(loginError && !password), paddingRight: 44 }} type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()} />
+                    <span onClick={() => setShowPassword(v => !v)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", cursor: "pointer", ...f(10, 600, 'bebas'), color: "var(--gold)", letterSpacing: ".06em", userSelect: "none" }}>{showPassword ? "HIDE" : "SHOW"}</span>
+                  </div>
                 </div>
                 {loginError && <div style={{ ...f(12, 400, 'serif'), color: "var(--red)", fontStyle: "italic" }}>Please enter your email and password.</div>}
                 <div style={{ ...row("center", 10), justifyContent: "space-between" }}>
@@ -1575,11 +1579,14 @@ export default function DWAApp() {
                 </div>
                 <div style={col(6)}>
                   <label style={lbl}>Password</label>
-                  <input style={inp(!!regError && !regPassword)} type="password" placeholder="At least 8 characters" value={regPassword} onChange={e => setRegPassword(e.target.value)} />
+                  <div style={{ position: "relative" }}>
+                    <input style={{ ...inp(!!regError && !regPassword), paddingRight: 44 }} type={showPassword ? "text" : "password"} placeholder="At least 8 characters" value={regPassword} onChange={e => setRegPassword(e.target.value)} />
+                    <span onClick={() => setShowPassword(v => !v)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", cursor: "pointer", ...f(10, 600, 'bebas'), color: "var(--gold)", letterSpacing: ".06em", userSelect: "none" }}>{showPassword ? "HIDE" : "SHOW"}</span>
+                  </div>
                 </div>
                 <div style={col(6)}>
                   <label style={lbl}>Confirm Password</label>
-                  <input style={inp(!!regError && regConfirm !== regPassword)} type="password" placeholder="Repeat password" value={regConfirm} onChange={e => setRegConfirm(e.target.value)} />
+                  <input style={inp(!!regError && regConfirm !== regPassword)} type={showPassword ? "text" : "password"} placeholder="Repeat password" value={regConfirm} onChange={e => setRegConfirm(e.target.value)} />
                 </div>
                 {regError && <div style={{ ...f(12, 400, 'serif'), color: "var(--red)", fontStyle: "italic" }}>{regError}</div>}
                 <button style={btnGold(authLoading)} disabled={authLoading} onClick={handleRegister}>{authLoading ? "CREATING ACCOUNT…" : "SUBMIT REQUEST"}</button>
