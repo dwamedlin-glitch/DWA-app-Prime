@@ -735,6 +735,8 @@ export default function DWAApp() {
   const [newMinTitle, setNewMinTitle] = useState("");
   const [newMinDate, setNewMinDate] = useState("");
   const [newMinSummary, setNewMinSummary] = useState("");
+  const [editMinId, setEditMinId] = useState(null);
+  const [minLang, setMinLang] = useState("en");
   const [newStewardName, setNewStewardName] = useState("");
   const [newStewardPhone, setNewStewardPhone] = useState("");
   const [newStewardDept, setNewStewardDept] = useState("Jersey City");
@@ -2617,22 +2619,34 @@ export default function DWAApp() {
 
   const Minutes = () => (
     <div className="rise" style={{ padding: "14px", display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ ...card({ padding: "13px 16px", borderLeft: "3px solid var(--gold)" }) }}>
-        <div style={{ ...f(13, 400, "serif"), color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic" }}>
+      <div style={{ ...card({ padding: "13px 16px", borderLeft: "3px solid var(--gold)" }), display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ ...f(13, 400, "serif"), color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", flex: 1 }}>
           Official meeting minutes and summaries posted by union leadership.
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--leather3)", borderRadius: 8, padding: 4, border: "1px solid var(--seam)", flexShrink: 0, marginLeft: 10 }}>
+          {["en", "es"].map(l => (
+            <div key={l} onClick={() => setMinLang(l)} style={{ padding: "4px 10px", borderRadius: 6, background: minLang === l ? "var(--gold)" : "transparent", color: minLang === l ? "#1a0f00" : "var(--text3)", ...f(11, 700), cursor: "pointer", textTransform: "uppercase" }}>{l}</div>
+          ))}
         </div>
       </div>
       {minutes.length === 0 && <div style={{ padding: "40px 0", textAlign: "center", ...f(13, 400, "serif"), color: "var(--text3)" }}>No meeting minutes posted yet.</div>}
-      {minutes.map(m => (
-        <div key={m.id} style={card({ padding: "16px" })}>
-          <div style={{ ...row("center", 0), justifyContent: "space-between", marginBottom: 8 }}>
-            <div style={{ ...f(15, 600), color: "var(--cream)", lineHeight: 1.25, flex: 1, paddingRight: 8 }}>{m.title}</div>
+      {minutes.map(m => {
+        const displayTitle = minLang === "es" && m.titleEs ? m.titleEs : m.title;
+        const displaySummary = minLang === "es" && m.summaryEs ? m.summaryEs : m.summary;
+        return (
+          <div key={m.id} style={card({ padding: "16px" })}>
+            <div style={{ ...row("center", 0), justifyContent: "space-between", marginBottom: 8 }}>
+              <div style={{ ...f(15, 600), color: "var(--cream)", lineHeight: 1.25, flex: 1, paddingRight: 8 }}>{displayTitle}</div>
+            </div>
+            <div style={{ ...f(11, 400, "serif"), color: "var(--gold)", fontStyle: "italic", marginBottom: 8 }}>{m.date}</div>
+            <div className="gold-rule" style={{ margin: "0 0 10px" }} />
+            <div style={{ ...f(13, 400, "serif"), color: "var(--text2)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{displaySummary}</div>
+            {minLang === "es" && !m.summaryEs && (
+              <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginTop: 8 }}>Translation not available for this entry.</div>
+            )}
           </div>
-          <div style={{ ...f(11, 400, "serif"), color: "var(--gold)", fontStyle: "italic", marginBottom: 8 }}>{m.date}</div>
-          <div className="gold-rule" style={{ margin: "0 0 10px" }} />
-          <div style={{ ...f(13, 400, "serif"), color: "var(--text2)", lineHeight: 1.7 }}>{m.summary}</div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 
@@ -3021,17 +3035,44 @@ export default function DWAApp() {
 
           {tab === "admin" && adminSection === "minutes" && (
             <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
-              <AdminFormHeader title="Meeting Minutes" />
+              <AdminFormHeader title={editMinId ? "Edit Minutes" : "Meeting Minutes"} />
               <div style={{ ...card({ padding: "16px" }), ...col(12) }}>
                 <div style={col(5)}><label style={lbl}>Title</label><input style={inp()} value={newMinTitle} onChange={e => setNewMinTitle(e.target.value)} placeholder="Meeting title" /></div>
                 <div style={col(5)}><label style={lbl}>Date</label><input style={inp()} value={newMinDate} onChange={e => setNewMinDate(e.target.value)} placeholder="e.g. Apr 5, 2026" /></div>
                 <div style={col(5)}><label style={lbl}>Summary</label><textarea style={{ ...inp(), minHeight: 80, resize: "vertical", lineHeight: 1.5 }} value={newMinSummary} onChange={e => setNewMinSummary(e.target.value)} placeholder="Brief summary of meeting…" /></div>
-                {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>✓ Saved!</div>}
-                <button style={btnGold(!newMinTitle.trim() || !newMinDate)} disabled={!newMinTitle.trim() || !newMinDate} onClick={() => {
-                  setMinutes(prev => { const updated = [{ id: Date.now(), title: newMinTitle, date: newMinDate, summary: newMinSummary }, ...prev]; saveMinutesFn(updated); return updated; });
-                  setNewMinTitle(""); setNewMinDate(""); setNewMinSummary("");
-                  saveFlash(() => { });
-                }}>POST MINUTES</button>
+                {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>{editMinId ? "✓ Updated in EN & ES!" : "✓ Posted in EN & ES!"}</div>}
+                {translating && <div style={{ ...f(12, 400, 'serif'), color: "var(--gold)", fontStyle: "italic" }}>Translating to Spanish…</div>}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button style={{ ...btnGold(!newMinTitle.trim() || !newMinDate || translating), flex: 1 }} disabled={!newMinTitle.trim() || !newMinDate || translating} onClick={async () => {
+                    setTranslating(true);
+                    let titleEs = newMinTitle;
+                    let summaryEs = newMinSummary;
+                    try {
+                      const response = await fetch("/api/translate", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ title: newMinTitle, body: newMinSummary }),
+                      });
+                      const data = await response.json();
+                      if (data.titleEs) titleEs = data.titleEs;
+                      if (data.bodyEs) summaryEs = data.bodyEs;
+                    } catch (e) {}
+                    setTranslating(false);
+                    if (editMinId) {
+                      setMinutes(prev => {
+                        const updated = prev.map(m => m.id === editMinId ? { ...m, title: newMinTitle, date: newMinDate, summary: newMinSummary, titleEs, summaryEs } : m);
+                        saveMinutesFn(updated);
+                        return updated;
+                      });
+                      setEditMinId(null);
+                    } else {
+                      setMinutes(prev => { const updated = [{ id: Date.now(), title: newMinTitle, date: newMinDate, summary: newMinSummary, titleEs, summaryEs }, ...prev]; saveMinutesFn(updated); return updated; });
+                    }
+                    setNewMinTitle(""); setNewMinDate(""); setNewMinSummary("");
+                    saveFlash(() => { });
+                  }}>{translating ? "TRANSLATING…" : editMinId ? "UPDATE MINUTES" : "POST MINUTES"}</button>
+                  {editMinId && <button onClick={() => { setEditMinId(null); setNewMinTitle(""); setNewMinDate(""); setNewMinSummary(""); }} style={{ padding: "10px 14px", background: "none", border: "1px solid var(--seam)", borderRadius: 8, color: "var(--text3)", ...f(12, 700, 'bebas'), letterSpacing: ".1em", cursor: "pointer" }}>CANCEL</button>}
+                </div>
               </div>
               {minutes.map(m => (
                 <div key={m.id} style={{ ...card({ padding: "14px" }) }}>
@@ -3041,7 +3082,10 @@ export default function DWAApp() {
                       <div style={{ ...f(11, 400, 'serif'), color: "var(--gold)", fontStyle: "italic", marginTop: 2 }}>{m.date}</div>
                       <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", marginTop: 4 }}>{m.summary.slice(0, 80)}…</div>
                     </div>
-                    <button onClick={() => setConfirmModal({ title: "Delete Minutes", message: `Delete "${m.title}"?`, danger: true, onConfirm: () => { const removed = m; setMinutes(prev => { const updated = prev.filter(x => x.id !== m.id); saveMinutesFn(updated); return updated; }); setToastMsg({ message: `"${m.title}" deleted`, onUndo: () => setMinutes(prev => { const restored = [removed, ...prev]; saveMinutesFn(restored); return restored; }) }); } })} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>DEL</button>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+                      <button onClick={() => { setEditMinId(m.id); setNewMinTitle(m.title); setNewMinDate(m.date); setNewMinSummary(m.summary); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ ...f(11, 700), color: "var(--gold)", background: "none", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>EDIT</button>
+                      <button onClick={() => setConfirmModal({ title: "Delete Minutes", message: `Delete "${m.title}"?`, danger: true, onConfirm: () => { const removed = m; setMinutes(prev => { const updated = prev.filter(x => x.id !== m.id); saveMinutesFn(updated); return updated; }); setToastMsg({ message: `"${m.title}" deleted`, onUndo: () => setMinutes(prev => { const restored = [removed, ...prev]; saveMinutesFn(restored); return restored; }) }); } })} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>DEL</button>
+                    </div>
                   </div>
                 </div>
               ))}
