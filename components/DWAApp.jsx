@@ -636,6 +636,7 @@ export default function DWAApp() {
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [showIOSInstallGuide, setShowIOSInstallGuide] = useState(false);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [role, setRole] = useState("member");
   const isAdmin = role === "super" || role === "admin";
   const isSuper = role === "super";
@@ -1513,8 +1514,9 @@ export default function DWAApp() {
   if (!loggedIn) return (
     <>
       <style>{css}</style>
-      <div style={{ maxWidth: 430, margin: "0 auto", height: "100vh", minHeight: "-webkit-fill-available", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "24px 24px 40px", position: "relative", overflow: "auto", WebkitOverflowScrolling: "touch" }}>
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, maxWidth: 430, margin: "0 auto", height: 2, background: "linear-gradient(90deg,transparent,var(--gold),transparent)", zIndex: 10 }} />
+      <div style={{ maxWidth: 430, margin: "0 auto", height: "100vh", minHeight: "-webkit-fill-available", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 24px 40px", position: "relative", overflow: "auto", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% -10%, rgba(201,146,42,0.12) 0%, transparent 60%)" }} />
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg,transparent,var(--gold),transparent)" }} />
 
         <div className="rise" style={{ width: "100%", ...col(0), alignItems: "center" }}>
           <img src={LOGO_B64} alt="DWA" style={{ width: "min(200px, 52vw)", objectFit: "contain", marginBottom: 8 }} />
@@ -1620,52 +1622,60 @@ export default function DWAApp() {
             </>
           )}
 
-          {/* How to Install the DWA App */}
-          <div style={{ width: "100%", marginTop: 32 }}>
-            <div className="gold-rule" style={{ width: "100%", marginBottom: 20 }} />
-            <div style={{ ...f(14, 400, 'bebas'), color: "var(--gold)", letterSpacing: ".12em", textTransform: "uppercase", textAlign: "center", marginBottom: 16 }}>How to Install the DWA App</div>
-            <div style={{ ...f(12, 400, 'serif'), color: "var(--text2)", lineHeight: 1.7, marginBottom: 20, textAlign: "center", fontStyle: "italic" }}>
-              Get instant access to the DWA app on your home screen — no app store needed.
+          {/* How to Install the DWA App — toggle */}
+          <div style={{ width: "100%", marginTop: 28 }}>
+            <div className="gold-rule" style={{ width: "100%", marginBottom: 16 }} />
+            <div onClick={() => setShowInstallGuide(v => !v)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", padding: "10px 0" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v6a2 2 0 002 2h12a2 2 0 002-2v-6"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+              <span style={{ ...f(12, 400, 'bebas'), color: "var(--gold)", letterSpacing: ".12em" }}>How to Install the DWA App</span>
+              <span style={{ ...f(14, 400), color: "var(--gold)", transition: "transform .2s", transform: showInstallGuide ? "rotate(180deg)" : "rotate(0)" }}>▾</span>
             </div>
+            {showInstallGuide && (
+              <div style={{ marginTop: 12, animation: "fadeUp .25s ease" }}>
+                <div style={{ ...f(12, 400, 'serif'), color: "var(--text2)", lineHeight: 1.7, marginBottom: 16, textAlign: "center", fontStyle: "italic" }}>
+                  Get instant access on your home screen — no app store needed.
+                </div>
 
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ ...f(12, 700, 'bebas'), color: "var(--cream)", letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 10 }}>On Android (Chrome):</div>
-              <div style={{ ...col(8) }}>
-                {[
-                  "Open Chrome and go to dwaunion.com",
-                  "Tap the menu icon (⋮) in the top-right corner",
-                  'Tap "Add to Home Screen"',
-                  "Name the shortcut and tap Add",
-                  "Open the DWA app from your home screen"
-                ].map((step, i) => (
-                  <div key={i} style={{ ...row("flex-start", 8) }}>
-                    <span style={{ ...f(12, 700), color: "var(--gold)", minWidth: 18 }}>{i + 1}.</span>
-                    <span style={{ ...f(12, 400, 'serif'), color: "var(--text2)", lineHeight: 1.6 }}>{step}</span>
+                <div style={{ marginBottom: 18 }}>
+                  <div style={{ ...f(12, 700, 'bebas'), color: "var(--cream)", letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 8 }}>On Android (Chrome):</div>
+                  <div style={{ ...col(6) }}>
+                    {[
+                      "Open Chrome and go to dwaunion.com",
+                      "Tap the menu icon (⋮) in the top-right corner",
+                      'Tap "Add to Home Screen"',
+                      "Name the shortcut and tap Add",
+                      "Open the DWA app from your home screen"
+                    ].map((step, i) => (
+                      <div key={i} style={{ ...row("flex-start", 8) }}>
+                        <span style={{ ...f(12, 700), color: "var(--gold)", minWidth: 18 }}>{i + 1}.</span>
+                        <span style={{ ...f(12, 400, 'serif'), color: "var(--text2)", lineHeight: 1.5 }}>{step}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            <div>
-              <div style={{ ...f(12, 700, 'bebas'), color: "var(--cream)", letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 10 }}>On iPhone / iPad (Safari):</div>
-              <div style={{ ...col(8) }}>
-                {[
-                  "Open Safari and go to dwaunion.com",
-                  <>Tap the Share button{" "}<span style={{ display: "inline-flex", verticalAlign: "middle", padding: "1px 4px", background: "rgba(255,255,255,0.1)", borderRadius: 4 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v6a2 2 0 002 2h12a2 2 0 002-2v-6"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></span>{" "}in the toolbar</>,
-                  <>Scroll down and tap{" "}<span style={{ display: "inline-flex", alignItems: "center", gap: 3, verticalAlign: "middle", padding: "1px 6px", background: "rgba(255,255,255,0.1)", borderRadius: 4 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span style={{ ...f(10, 600), color: "var(--cream)" }}>Add to Home Screen</span></span></>,
-                  "Name the shortcut and tap Add",
-                  "Open the DWA app from your home screen"
-                ].map((step, i) => (
-                  <div key={i} style={{ ...row("flex-start", 8) }}>
-                    <span style={{ ...f(12, 700), color: "var(--gold)", minWidth: 18 }}>{i + 1}.</span>
-                    <span style={{ ...f(12, 400, 'serif'), color: "var(--text2)", lineHeight: 1.6 }}>{step}</span>
+                <div>
+                  <div style={{ ...f(12, 700, 'bebas'), color: "var(--cream)", letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 8 }}>On iPhone / iPad (Safari):</div>
+                  <div style={{ ...col(6) }}>
+                    {[
+                      "Open Safari and go to dwaunion.com",
+                      <>Tap the Share button{" "}<span style={{ display: "inline-flex", verticalAlign: "middle", padding: "1px 4px", background: "rgba(255,255,255,0.1)", borderRadius: 4 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v6a2 2 0 002 2h12a2 2 0 002-2v-6"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></span>{" "}in the toolbar</>,
+                      <>Scroll down and tap{" "}<span style={{ display: "inline-flex", alignItems: "center", gap: 3, verticalAlign: "middle", padding: "1px 6px", background: "rgba(255,255,255,0.1)", borderRadius: 4 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span style={{ ...f(10, 600), color: "var(--cream)" }}>Add to Home Screen</span></span></>,
+                      "Name the shortcut and tap Add",
+                      "Open the DWA app from your home screen"
+                    ].map((step, i) => (
+                      <div key={i} style={{ ...row("flex-start", 8) }}>
+                        <span style={{ ...f(12, 700), color: "var(--gold)", minWidth: 18 }}>{i + 1}.</span>
+                        <span style={{ ...f(12, 400, 'serif'), color: "var(--text2)", lineHeight: 1.5 }}>{step}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                  <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", marginTop: 10, fontStyle: "italic", lineHeight: 1.5 }}>
+                    *On iOS, use Safari for the best experience. Other browsers may not support "Add to Home Screen."
+                  </div>
+                </div>
               </div>
-              <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", marginTop: 10, fontStyle: "italic", lineHeight: 1.5 }}>
-                *If you're using a browser other than Safari on iOS (like Chrome or Brave), the "Add to Home Screen" option may not be available. Please use Safari for the best experience.
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
