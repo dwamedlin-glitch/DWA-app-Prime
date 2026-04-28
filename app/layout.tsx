@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import NotificationWrapper from "../components/NotificationWrapper";
 
 export const metadata: Metadata = {
   title: "DWA Union",
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body style={{ margin: 0, padding: 0, background: "#0d0b08" }}>
-        {children}
+        <NotificationWrapper>
+          {children}
+        </NotificationWrapper>
       </body>
     </html>
   );
