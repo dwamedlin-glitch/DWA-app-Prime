@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import NotificationWrapper from "../components/NotificationWrapper";
+import dynamic from "next/dynamic";
+
+const NotificationWrapper = dynamic(() => import("../components/NotificationWrapper"), { ssr: false });
 
 export const metadata: Metadata = {
   title: "DWA Union",
