@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import { usePushNotifications } from "../hooks/usePushNotifications";
+import { onAuthChange, getUserProfile } from "../lib/firebase";
 
-// ── NOTIFICATION TOAST ──
+// — NOTIFICATION TOAST (foreground messages) —
 function NotificationToast() {
   const [toast, setToast] = useState(null);
   const [visible, setVisible] = useState(false);
@@ -38,10 +39,9 @@ function NotificationToast() {
   );
 }
 
-// ── PERMISSION PROMPT ──
+// — PERMISSION PROMPT (only shown once after admin approves a new member) —
 function NotificationPrompt({ onDone }) {
-  const { isSupported, permission, isLoading, error, requestPermission } = usePushNotifications();
-  if (permission === "granted") { onDone(); return null; }
+  const { isSupported, isLoading, error, requestPermission } = usePushNotifications();
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 10000, background: "#0d0d1a",
@@ -59,7 +59,7 @@ function NotificationPrompt({ onDone }) {
         Get notified about union announcements, meeting reminders, and important votes.
       </p>
       {error && <p style={{ color: "#e74c3c", fontSize: 13, marginBottom: 16 }}>{error}</p>}
-      <button onClick={async () => { const ok = await requestPermission(); if (ok) setTimeout(onDone, 1000); }}
+      <button onClick={async () => { await requestPermission(); onDone(); }}
         disabled={!isSupported || isLoading}
         style={{
           width: "100%", maxWidth: 300, padding: "16px 24px", borderRadius: 12, border: "none",
@@ -77,23 +77,36 @@ function NotificationPrompt({ onDone }) {
   );
 }
 
-// ── WRAPPER ──
+// — WRAPPER —
+// Only shows the notification prompt ONCE when a new member is first approved by admin.
+// Uses localStorage so it never shows again after they dismiss or enable.
 export default function NotificationWrapper({ children }) {
   const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
-      const seen = sessionStorage.getItem("dwa-notif-prompted");
-      if (!seen) {
-        const timer = setTimeout(() => setShowPrompt(true), 3000);
-        return () => clearTimeout(timer);
+    if (typeof window === "undefined") return;
+    if (typeof Notification === "undefined") return;
+    if (Notification.permission !== "default") return;
+    if (localStorage.getItem("dwa-notif-prompted")) return;
+
+    // Only prompt approved members
+    const unsub = onAuthChange(async (user) => {
+      if (!user) return;
+      try {
+        const profile = await getUserProfile(user.uid);
+        if (profile && profile.status === "approved" && !localStorage.getItem("dwa-notif-prompted")) {
+          setTimeout(() => setShowPrompt(true), 2000);
+        }
+      } catch (e) {
+        // silently skip
       }
-    }
+    });
+    return () => unsub();
   }, []);
 
   const handleDone = () => {
     setShowPrompt(false);
-    sessionStorage.setItem("dwa-notif-prompted", "1");
+    localStorage.setItem("dwa-notif-prompted", "1");
   };
 
   return (
