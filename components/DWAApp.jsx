@@ -474,13 +474,7 @@ F. Any expense exceeding $100.00 must be pre-approved by majority vote of the me
 const CBA_ARTICLES_ES = CBA_ARTICLES.map(a => ({ ...a, title: a.title + " (ES)" })); // placeholder
 const BYLAWS_ARTICLES_ES = BYLAWS_ARTICLES.map(a => ({ ...a, title: a.title + " (ES)" }));
 
-const STEWARDS = [
-  { id: 5, name: "Anthony Santiago", title: "Shop Steward", dept: "", shifts: "", phone: "3473867440" },
-  { id: 6, name: "Greg Van Peenan", title: "Shop Steward", dept: "", shifts: "", phone: "9736041930" },
-  { id: 10, name: "Kyle Clark", title: "Shop Steward", dept: "Florence", shifts: "", phone: "6094004892" },
-  { id: 11, name: "James Walker", title: "Shop Steward", dept: "", shifts: "", phone: "6092514397" },
-  { id: 12, name: "Tyrik Darby", title: "Shop Steward", dept: "", shifts: "", phone: "2013750448" },
-];
+const STEWARDS = [];
 
 const ISSUE_TYPES = [
   "Select issue type…",
