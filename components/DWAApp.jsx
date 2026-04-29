@@ -744,7 +744,7 @@ export default function DWAApp() {
   const [newContactTitle, setNewContactTitle] = useState("Shop Steward");
   const [newContactDept, setNewContactDept] = useState("");
   const [newContactPhone, setNewContactPhone] = useState("");
-  const [editContactId, setEditContactId] = useState(null);
+  const [editContactId, setEditContactId] = useState(null);  const [newContactEmail, setNewContactEmail] = useState("");
   const [newStewardTitle, setNewStewardTitle] = useState("Shop Steward");
 
   // ── THE FLOOR (Discussion Forum) ──
@@ -3482,18 +3482,18 @@ export default function DWAApp() {
                   <button style={{ ...btnGold(!newContactName.trim()), flex: 1 }} disabled={!newContactName.trim()} onClick={() => {
                     if (editContactId) {
                       setStewardsData(prev => {
-                        const updated = prev.map(s => s.id === editContactId ? { ...s, name: newContactName.trim(), title: newContactTitle, dept: newContactDept.trim(), phone: newContactPhone.replace(/\D/g, "") } : s);
+                        const updated = prev.map(s => s.id === editContactId ? { ...s, name: newContactName.trim(), title: newContactTitle, dept: newContactDept.trim(), phone: newContactPhone.replace(/\D/g, ""), email: newContactEmail.trim() } : s);
                         saveStewards(updated);
                         return updated;
                       });
                       setEditContactId(null);
                     } else {
-                      setStewardsData(prev => { const updated = [...prev, { id: Date.now(), name: newContactName.trim(), title: newContactTitle, dept: newContactDept.trim(), phone: newContactPhone.replace(/\D/g, "") }]; saveStewards(updated); return updated; });
+                      setStewardsData(prev => { const updated = [...prev, { id: Date.now(), name: newContactName.trim(), title: newContactTitle, dept: newContactDept.trim(), phone: newContactPhone.replace(/\D/g, ""), email: newContactEmail.trim() }]; saveStewards(updated); return updated; });
                     }
-                    setNewContactName(""); setNewContactPhone(""); setNewContactDept(""); setNewContactTitle("Shop Steward");
+                    setNewContactName(""); setNewContactPhone(""); setNewContactDept(""); setNewContactTitle(""); setNewContactEmail("");
                     saveFlash(() => {});
                   }}>{editContactId ? "UPDATE CONTACT" : "ADD CONTACT"}</button>
-                  {editContactId && <button onClick={() => { setEditContactId(null); setNewContactName(""); setNewContactPhone(""); setNewContactDept(""); setNewContactTitle("Shop Steward"); }} style={{ padding: "10px 14px", background: "none", border: "1px solid var(--seam)", borderRadius: 8, color: "var(--text3)", ...f(12, 700, 'bebas'), letterSpacing: ".1em", cursor: "pointer" }}>CANCEL</button>}
+                  {editContactId && <button onClick={() => { setEditContactId(null); setNewContactName(""); setNewContactPhone(""); setNewContactDept(""); setNewContactTitle(""); setNewContactEmail(""); }} style={{ padding: "10px 14px", background: "none", border: "1px solid var(--seam)", borderRadius: 8, color: "var(--text3)", ...f(12, 700, 'bebas'), letterSpacing: ".1em", cursor: "pointer" }}>CANCEL</button>}
                 </div>
               </div>
               <div style={{ ...card({ padding: "16px" }), ...col(8) }}>
@@ -3509,7 +3509,7 @@ export default function DWAApp() {
                       <div style={{ ...f(10, 400, "serif"), color: "var(--text3)", fontStyle: "italic" }}>{s.title}{s.dept ? ` · ${s.dept}` : ""}{s.phone ? ` · ${s.phone}` : ""}</div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-                      <button onClick={() => { setEditContactId(s.id); setNewContactName(s.name); setNewContactTitle(s.title || "Shop Steward"); setNewContactDept(s.dept || ""); setNewContactPhone(s.phone || ""); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ ...f(11, 700), color: "var(--gold)", background: "none", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>EDIT</button>
+                      <button onClick={() => { setEditContactId(s.id); setNewContactName(s.name); setNewContactTitle(s.title || "Shop Steward"); setNewContactDept(s.dept || ""); setNewContactPhone(s.phone || ""); setNewContactEmail(s.email || ""); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ ...f(11, 700), color: "var(--gold)", background: "none", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>EDIT</button>
                       <button onClick={() => { setConfirmModal({ title: `Remove ${s.name}?`, message: `${s.name} will be removed from DWA Contacts.`, danger: true, onConfirm: () => { const removed = s; setStewardsData(prev => { const updated = prev.filter(x => x.id !== s.id); saveStewards(updated); return updated; }); setToastMsg({ message: `${s.name} removed`, onUndo: () => { setStewardsData(prev => { const restored = [...prev, removed]; saveStewards(restored); return restored; }); } }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>DEL</button>
                     </div>
                   </div>
