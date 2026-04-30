@@ -1,6 +1,14 @@
-/* DWA v1.4.0 */
+/* DWA v1.5.0 */
 import { useState, useEffect, useRef } from "react";
 import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, uploadDocumentFile, uploadFloorPhoto, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority, registerUser, loginUser, logoutUser, onAuthChange, saveUserProfile, getUserProfile, subscribeToPendingMembers, approveMember, denyMember, subscribeToApprovedMembers, updateUserRole, deleteUserProfile, sendPasswordResetToUser } from "../lib/firebase";
+import { getFirestore, doc, updateDoc } from "firebase/firestore";
+
+// Edit a floor post in-place (text + edited flag)
+async function editFloorPost(postId, updates) {
+  const db = getFirestore();
+  const postRef = doc(db, "floorPosts", postId);
+  await updateDoc(postRef, updates);
+}
 
 // ── PLACEHOLDER BASE64 ASSETS (replace with real ones before deploy) ──
 const TEXTURE_B64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E";
@@ -474,7 +482,13 @@ F. Any expense exceeding $100.00 must be pre-approved by majority vote of the me
 const CBA_ARTICLES_ES = CBA_ARTICLES.map(a => ({ ...a, title: a.title + " (ES)" })); // placeholder
 const BYLAWS_ARTICLES_ES = BYLAWS_ARTICLES.map(a => ({ ...a, title: a.title + " (ES)" }));
 
-const STEWARDS = [];
+const STEWARDS = [
+  { id: 5, name: "Anthony Santiago", title: "Shop Steward", dept: "", shifts: "", phone: "3473867440" },
+  { id: 6, name: "Greg Van Peenan", title: "Shop Steward", dept: "", shifts: "", phone: "9736041930" },
+  { id: 10, name: "Kyle Clark", title: "Shop Steward", dept: "Florence", shifts: "", phone: "6094004892" },
+  { id: 11, name: "James Walker", title: "Shop Steward", dept: "", shifts: "", phone: "6092514397" },
+  { id: 12, name: "Tyrik Darby", title: "Shop Steward", dept: "", shifts: "", phone: "2013750448" },
+];
 
 const ISSUE_TYPES = [
   "Select issue type…",
@@ -698,8 +712,15 @@ export default function DWAApp() {
   const [grievanceError, setGrievanceError] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [showOfflineMessage, setShowOfflineMessage] = useState(false);
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
-  const APP_VERSION = "1.2.0";
+  const [showSessionWarning, setShowSessionWarning] = useState(false);
+  const [tabDataLoading, setTabDataLoading] = useState(false);
+  const sessionTimerRef = useRef(null);
+  const sessionWarningTimerRef = useRef(null);
+  const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // 15 min idle → logout
+  const SESSION_WARNING_MS = 13 * 60 * 1000; // warn at 13 min
+  const APP_VERSION = "1.3.0";
   const [myGrievances] = useState([
     { id: 1, type: "Scheduling or overtime issue", date: "Apr 3, 2026", status: "review" },
     { id: 2, type: "Wage or pay dispute", date: "Feb 18, 2026", status: "resolved" },
@@ -744,7 +765,9 @@ export default function DWAApp() {
   const [newContactTitle, setNewContactTitle] = useState("Shop Steward");
   const [newContactDept, setNewContactDept] = useState("");
   const [newContactPhone, setNewContactPhone] = useState("");
-  const [editContactId, setEditContactId] = useState(null);  const [allApprovedUsers, setAllApprovedUsers] = useState([]);  const [userAdminSearch, setUserAdminSearch] = useState("");  const [newContactEmail, setNewContactEmail] = useState("");
+  const [editContactId, setEditContactId] = useState(null);
+  const [allApprovedUsers, setAllApprovedUsers] = useState([]);
+  const [userAdminSearch, setUserAdminSearch] = useState("");
   const [newStewardTitle, setNewStewardTitle] = useState("Shop Steward");
 
   // ── THE FLOOR (Discussion Forum) ──
@@ -758,6 +781,9 @@ export default function DWAApp() {
   const floorPostRef = useRef(null);
   const floorReplyRef = useRef(null);
   const floorPhotoRef = useRef(null);
+  const [floorEditingPost, setFloorEditingPost] = useState(null); // post id being edited
+  const [floorEditText, setFloorEditText] = useState("");
+  const floorEditRef = useRef(null);
   const currentUserName = userProfile?.name || regName || email.split("@")[0] || "Member";
   const currentUserLocation = userProfile?.location || "Jersey City";
   const currentUserRole = isAdmin ? "officer" : (userProfile?.role === "steward" ? "steward" : "member");
@@ -837,7 +863,13 @@ export default function DWAApp() {
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => { const unsub = subscribeToApprovedMembers((m) => setAllApprovedUsers(m)); return () => unsub(); }, []);  // ── LOAD ALL APP DATA FROM FIRESTORE ──
+  // Subscribe to approved members for User Admin
+  useEffect(() => {
+    const unsub = subscribeToApprovedMembers((members) => setAllApprovedUsers(members));
+    return () => unsub();
+  }, []);
+
+  // ── LOAD ALL APP DATA FROM FIRESTORE ──
   useEffect(() => {
     // Announcements
     fbLoadAnnouncements().then((anns) => {
@@ -898,7 +930,7 @@ export default function DWAApp() {
   // ── OFFLINE DETECTION ──
   useEffect(() => {
     const goOffline = () => setIsOffline(true);
-    const goOnline = () => setIsOffline(false);
+    const goOnline = () => { setIsOffline(false); setShowOfflineMessage(false); };
     window.addEventListener("offline", goOffline);
     window.addEventListener("online", goOnline);
     return () => {
@@ -906,6 +938,62 @@ export default function DWAApp() {
       window.removeEventListener("online", goOnline);
     };
   }, []);
+
+  // ── SESSION TIMEOUT (idle auto-logout) ──
+  useEffect(() => {
+    if (!loggedIn) return;
+    const resetTimers = () => {
+      if (sessionTimerRef.current) clearTimeout(sessionTimerRef.current);
+      if (sessionWarningTimerRef.current) clearTimeout(sessionWarningTimerRef.current);
+      setShowSessionWarning(false);
+      sessionWarningTimerRef.current = setTimeout(() => {
+        setShowSessionWarning(true);
+      }, SESSION_WARNING_MS);
+      sessionTimerRef.current = setTimeout(() => {
+        setShowSessionWarning(false);
+        logoutUser().then(() => {
+          setLoggedIn(false);
+          setTab("home");
+          setSub(null);
+          showToast("Session expired — you've been logged out for security.");
+        }).catch(() => {
+          setLoggedIn(false);
+          setTab("home");
+          setSub(null);
+        });
+      }, SESSION_TIMEOUT_MS);
+    };
+    const events = ["mousedown", "keydown", "touchstart", "scroll", "mousemove"];
+    events.forEach(e => window.addEventListener(e, resetTimers, { passive: true }));
+    resetTimers();
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetTimers));
+      if (sessionTimerRef.current) clearTimeout(sessionTimerRef.current);
+      if (sessionWarningTimerRef.current) clearTimeout(sessionWarningTimerRef.current);
+    };
+  }, [loggedIn]);
+
+  // ── TAB LOADING SKELETON SIMULATION ──
+  useEffect(() => {
+    if (!loggedIn) return;
+    setTabDataLoading(true);
+    const t = setTimeout(() => setTabDataLoading(false), 600);
+    return () => clearTimeout(t);
+  }, [tab, sub]);
+
+  // helper: show offline message if offline
+  const checkOfflineAction = (actionName) => {
+    if (isOffline) {
+      setShowOfflineMessage(true);
+      return true; // blocked
+    }
+    return false;
+  };
+
+  const showToast = (msg) => {
+    setToastMsg({ message: msg });
+    setTimeout(() => setToastMsg(null), 4000);
+  };
 
   // ── UPDATE BANNER (show once per new version) ──
   useEffect(() => {
@@ -1353,6 +1441,44 @@ export default function DWAApp() {
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 10000, background: "linear-gradient(135deg, #8b2500, #a03000)", padding: "8px 16px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, animation: "offline-pulse 2s ease-in-out infinite" }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
         <span style={{ ...f(11, 600), color: "#fff", letterSpacing: ".06em", textTransform: "uppercase" }}>You're offline — some features may be unavailable</span>
+      </div>
+    );
+  };
+
+  // ── OFFLINE ACTION MESSAGE OVERLAY ──
+  const OfflineMessageOverlay = () => {
+    if (!showOfflineMessage) return null;
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 10001, background: "rgba(0,0,0,0.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={() => setShowOfflineMessage(false)}>
+        <div onClick={e => e.stopPropagation()} style={{ background: "linear-gradient(135deg, #1c1410, #2a1a12)", border: "1px solid rgba(201,146,42,0.25)", borderRadius: 16, padding: "32px 24px", maxWidth: 340, width: "100%", textAlign: "center" }}>
+          <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(139,37,0,0.25)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff6b35" strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+          </div>
+          <div style={{ ...f(20, 400, 'bebas'), color: "var(--gold)", letterSpacing: ".1em", marginBottom: 8 }}>NO CONNECTION</div>
+          <div style={{ ...f(12, 400, 'serif'), color: "var(--text2)", lineHeight: 1.6, marginBottom: 20, fontStyle: "italic" }}>
+            You're currently offline. This action requires an internet connection. Please check your connection and try again.
+          </div>
+          <button onClick={() => setShowOfflineMessage(false)} style={{ ...f(14, 400, 'bebas'), background: "linear-gradient(135deg, var(--gold), #b8860b)", color: "#1a0e08", border: "none", borderRadius: 8, padding: "10px 32px", cursor: "pointer", letterSpacing: ".1em" }}>GOT IT</button>
+        </div>
+      </div>
+    );
+  };
+
+  // ── SESSION TIMEOUT WARNING MODAL ──
+  const SessionWarningModal = () => {
+    if (!showSessionWarning || !loggedIn) return null;
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 10002, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div style={{ background: "linear-gradient(135deg, #1c1410, #2a1a12)", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 16, padding: "32px 24px", maxWidth: 360, width: "100%", textAlign: "center" }}>
+          <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(201,146,42,0.15)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div style={{ ...f(20, 400, 'bebas'), color: "var(--gold)", letterSpacing: ".1em", marginBottom: 8 }}>SESSION EXPIRING</div>
+          <div style={{ ...f(12, 400, 'serif'), color: "var(--text2)", lineHeight: 1.6, marginBottom: 20, fontStyle: "italic" }}>
+            You've been inactive for a while. Your session will expire shortly for security. Move your mouse, tap the screen, or press any key to stay logged in.
+          </div>
+          <button onClick={() => setShowSessionWarning(false)} style={{ ...f(14, 400, 'bebas'), background: "linear-gradient(135deg, var(--gold), #b8860b)", color: "#1a0e08", border: "none", borderRadius: 8, padding: "10px 32px", cursor: "pointer", letterSpacing: ".1em" }}>I'M STILL HERE</button>
+        </div>
       </div>
     );
   };
@@ -2290,6 +2416,7 @@ export default function DWAApp() {
       }
       await createFloorPost({
         author: currentUserName,
+        uid: currentUid,
         location: currentUserLocation,
         role: currentUserRole,
         text: text || "",
@@ -2394,6 +2521,34 @@ export default function DWAApp() {
     });
   };
 
+  const startFloorEdit = (post) => {
+    setFloorEditingPost(post.id);
+    setFloorEditText(post.text || "");
+    setTimeout(() => floorEditRef.current?.focus(), 100);
+  };
+
+  const cancelFloorEdit = () => {
+    setFloorEditingPost(null);
+    setFloorEditText("");
+  };
+
+  const handleFloorEditSave = async (postId) => {
+    const newText = floorEditText.trim();
+    if (!newText) {
+      setToastMsg({ message: "Post can't be empty." });
+      return;
+    }
+    try {
+      await editFloorPost(postId, { text: newText, edited: true, editedAt: Date.now() });
+      setFloorEditingPost(null);
+      setFloorEditText("");
+      setToastMsg({ message: "Post updated" });
+    } catch (e) {
+      console.error("Failed to edit:", e);
+      setToastMsg({ message: "Failed to edit. Try again." });
+    }
+  };
+
   const TheFloor = () => (
     <div className="rise" style={{ padding: "16px 14px 30px", ...col(0) }}>
       <div style={{ ...card({ padding: "18px", marginBottom: 16 }), textAlign: "center" }}>
@@ -2481,7 +2636,31 @@ export default function DWAApp() {
             </div>
           </div>
           {/* Post body */}
-          {post.text && <div style={{ ...f(13, 400, 'serif'), color: "var(--text)", lineHeight: 1.65, marginBottom: 10 }}>{post.text}</div>}
+          {floorEditingPost === post.id ? (
+            <div style={{ ...col(8), marginBottom: 10 }}>
+              <textarea
+                ref={floorEditRef}
+                value={floorEditText}
+                onChange={e => setFloorEditText(e.target.value)}
+                style={{ ...inp(), minHeight: 60, resize: "vertical", lineHeight: 1.5, fontSize: 13 }}
+                autoFocus
+              />
+              <div style={{ ...row("center", 8), justifyContent: "flex-end" }}>
+                <span onClick={cancelFloorEdit} style={{ ...f(11, 500), color: "var(--text3)", cursor: "pointer" }}>Cancel</span>
+                <button onClick={() => handleFloorEditSave(post.id)} style={{ ...btnGold(), width: "auto", padding: "7px 18px", ...f(11, 400, 'bebas'), letterSpacing: ".1em" }}>SAVE</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {post.text && <div style={{ ...f(13, 400, 'serif'), color: "var(--text)", lineHeight: 1.65, marginBottom: 4 }}>{post.text}</div>}
+              {post.edited && (
+                <div style={{ ...f(10, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginBottom: 8, opacity: 0.7 }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 3, marginTop: -1 }}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  edited
+                </div>
+              )}
+            </>
+          )}
           {post.photoURL && (
             <div style={{ marginBottom: 10 }}>
               <img src={post.photoURL} alt="Post photo" style={{ width: "100%", maxHeight: 300, objectFit: "cover", borderRadius: 8, border: "1px solid var(--seam)", cursor: "pointer" }} onClick={() => window.open(post.photoURL, "_blank")} />
@@ -2489,15 +2668,25 @@ export default function DWAApp() {
           )}
           {/* Post actions */}
           <div style={{ ...row("center", 0), justifyContent: "space-between", borderTop: "1px solid var(--seam)", paddingTop: 8 }}>
-            <span
-              onClick={() => { setFloorReplyTo(floorReplyTo === post.id ? null : post.id); setFloorReplyText(""); }}
-              style={{ ...f(12, 500), color: "var(--gold)", cursor: "pointer" }}
-            >
-              Reply{post.replies.length > 0 ? ` (${post.replies.length})` : ""}
-            </span>
+            <div style={{ ...row("center", 12) }}>
+              <span
+                onClick={() => { setFloorReplyTo(floorReplyTo === post.id ? null : post.id); setFloorReplyText(""); }}
+                style={{ ...f(12, 500), color: "var(--gold)", cursor: "pointer" }}
+              >
+                Reply{post.replies.length > 0 ? ` (${post.replies.length})` : ""}
+              </span>
+              {(post.author === currentUserName || post.uid === currentUid) && floorEditingPost !== post.id && (
+                <span
+                  onClick={() => startFloorEdit(post)}
+                  style={{ ...f(12, 500), color: "var(--text3)", cursor: "pointer" }}
+                >
+                  Edit
+                </span>
+              )}
+            </div>
             {isAdmin && (
               <div style={{ ...row("center", 6) }}>
-                {post.author !== currentUserName && !bannedUsers.some(b => b.name === post.author) && (
+                {post.author !== currentUserName && post.uid !== currentUid && !bannedUsers.some(b => b.name === post.author) && (
                   <span onClick={() => handleBanUser(post.author, post.id)} style={{ ...f(11, 600), color: "#e87a7a", cursor: "pointer", background: "#2a1010", padding: "3px 10px", borderRadius: 8 }}>Ban</span>
                 )}
                 <span onClick={() => handleFloorDelete(post.id)} style={{ ...f(11, 600), color: "#a04040", cursor: "pointer", background: "#2a1010", padding: "3px 10px", borderRadius: 8 }}>Delete</span>
@@ -3002,7 +3191,8 @@ export default function DWAApp() {
               { icon: "calendar", label: "Union Meeting", action: () => setAdminSection("meeting") },
               { icon: "video", label: "Zoom Room", action: () => setAdminSection("zoom") },
               { icon: "phone", label: "DWA Contacts", action: () => setAdminSection("contacts") },
-              { icon: "users", label: "Member Requests", action: () => setAdminSection("members") },              { icon: "shield", label: "User Admin", action: () => setAdminSection("useradmin") },
+              { icon: "users", label: "Member Requests", action: () => setAdminSection("members") },
+              { icon: "shield", label: "User Admin", action: () => setAdminSection("useradmin") },
               ...(bannedUsers.length > 0 ? [{ icon: "x", label: `Banned (${bannedUsers.length})`, action: () => setAdminSection("banned") }] : []),
               ...(isSuper ? [{ icon: "shield", label: "Manage Officials", action: () => setAdminSection("accounts") }] : []),
             ].map(qa => (
@@ -3063,15 +3253,24 @@ export default function DWAApp() {
         </div>
 
         <div className="scroll" style={{ flex: 1, position: "relative", zIndex: 1 }}>
-          {tab === "home" && <Home />}
-          {tab === "theFloor" && <TheFloor />}
-          {tab === "grievance" && <Grievance />}
-          {tab === "documents" && <Documents />}
-          {tab === "announcements" && <Announcements />}
-          {tab === "zoom" && <Zoom />}
-          {tab === "minutes" && <Minutes />}
-          {tab === "seniority" && <Seniority />}
-          {tab === "admin" && !adminSection && <Admin />}
+          {tabDataLoading && tab === "home" && <div className="rise" style={{ padding: 16 }}><SkeletonGrid count={6} /></div>}
+          {tabDataLoading && tab === "theFloor" && <div className="rise" style={{ padding: 16 }}><SkeletonList count={3} avatar /></div>}
+          {tabDataLoading && tab === "announcements" && <div className="rise" style={{ padding: 16 }}><SkeletonList count={3} /></div>}
+          {tabDataLoading && tab === "documents" && <div className="rise" style={{ padding: 16 }}><SkeletonList count={4} /></div>}
+          {tabDataLoading && tab === "seniority" && <div className="rise" style={{ padding: 16 }}><SkeletonList count={5} /></div>}
+          {tabDataLoading && tab === "grievance" && <div className="rise" style={{ padding: 16 }}><SkeletonCard lines={4} /><SkeletonCard lines={3} /></div>}
+          {tabDataLoading && tab === "minutes" && <div className="rise" style={{ padding: 16 }}><SkeletonList count={3} /></div>}
+          {tabDataLoading && tab === "zoom" && <div className="rise" style={{ padding: 16 }}><SkeletonCard lines={4} /></div>}
+          {tabDataLoading && tab === "admin" && <div className="rise" style={{ padding: 16 }}><SkeletonGrid count={8} /></div>}
+          {!tabDataLoading && tab === "home" && <Home />}
+          {!tabDataLoading && tab === "theFloor" && <TheFloor />}
+          {!tabDataLoading && tab === "grievance" && <Grievance />}
+          {!tabDataLoading && tab === "documents" && <Documents />}
+          {!tabDataLoading && tab === "announcements" && <Announcements />}
+          {!tabDataLoading && tab === "zoom" && <Zoom />}
+          {!tabDataLoading && tab === "minutes" && <Minutes />}
+          {!tabDataLoading && tab === "seniority" && <Seniority />}
+          {!tabDataLoading && tab === "admin" && !adminSection && <Admin />}
 
           {/* Admin Sections */}
           {tab === "admin" && adminSection === "announcements" && (
@@ -3482,18 +3681,18 @@ export default function DWAApp() {
                   <button style={{ ...btnGold(!newContactName.trim()), flex: 1 }} disabled={!newContactName.trim()} onClick={() => {
                     if (editContactId) {
                       setStewardsData(prev => {
-                        const updated = prev.map(s => s.id === editContactId ? { ...s, name: newContactName.trim(), title: newContactTitle, dept: newContactDept.trim(), phone: newContactPhone.replace(/\D/g, ""), email: newContactEmail.trim() } : s);
+                        const updated = prev.map(s => s.id === editContactId ? { ...s, name: newContactName.trim(), title: newContactTitle, dept: newContactDept.trim(), phone: newContactPhone.replace(/\D/g, "") } : s);
                         saveStewards(updated);
                         return updated;
                       });
                       setEditContactId(null);
                     } else {
-                      setStewardsData(prev => { const updated = [...prev, { id: Date.now(), name: newContactName.trim(), title: newContactTitle, dept: newContactDept.trim(), phone: newContactPhone.replace(/\D/g, ""), email: newContactEmail.trim() }]; saveStewards(updated); return updated; });
+                      setStewardsData(prev => { const updated = [...prev, { id: Date.now(), name: newContactName.trim(), title: newContactTitle, dept: newContactDept.trim(), phone: newContactPhone.replace(/\D/g, "") }]; saveStewards(updated); return updated; });
                     }
-                    setNewContactName(""); setNewContactPhone(""); setNewContactDept(""); setNewContactTitle(""); setNewContactEmail("");
+                    setNewContactName(""); setNewContactPhone(""); setNewContactDept(""); setNewContactTitle("Shop Steward");
                     saveFlash(() => {});
                   }}>{editContactId ? "UPDATE CONTACT" : "ADD CONTACT"}</button>
-                  {editContactId && <button onClick={() => { setEditContactId(null); setNewContactName(""); setNewContactPhone(""); setNewContactDept(""); setNewContactTitle(""); setNewContactEmail(""); }} style={{ padding: "10px 14px", background: "none", border: "1px solid var(--seam)", borderRadius: 8, color: "var(--text3)", ...f(12, 700, 'bebas'), letterSpacing: ".1em", cursor: "pointer" }}>CANCEL</button>}
+                  {editContactId && <button onClick={() => { setEditContactId(null); setNewContactName(""); setNewContactPhone(""); setNewContactDept(""); setNewContactTitle("Shop Steward"); }} style={{ padding: "10px 14px", background: "none", border: "1px solid var(--seam)", borderRadius: 8, color: "var(--text3)", ...f(12, 700, 'bebas'), letterSpacing: ".1em", cursor: "pointer" }}>CANCEL</button>}
                 </div>
               </div>
               <div style={{ ...card({ padding: "16px" }), ...col(8) }}>
@@ -3509,7 +3708,7 @@ export default function DWAApp() {
                       <div style={{ ...f(10, 400, "serif"), color: "var(--text3)", fontStyle: "italic" }}>{s.title}{s.dept ? ` · ${s.dept}` : ""}{s.phone ? ` · ${s.phone}` : ""}</div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-                      <button onClick={() => { setEditContactId(s.id); setNewContactName(s.name); setNewContactTitle(s.title || "Shop Steward"); setNewContactDept(s.dept || ""); setNewContactPhone(s.phone || ""); setNewContactEmail(s.email || ""); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ ...f(11, 700), color: "var(--gold)", background: "none", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>EDIT</button>
+                      <button onClick={() => { setEditContactId(s.id); setNewContactName(s.name); setNewContactTitle(s.title || "Shop Steward"); setNewContactDept(s.dept || ""); setNewContactPhone(s.phone || ""); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ ...f(11, 700), color: "var(--gold)", background: "none", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>EDIT</button>
                       <button onClick={() => { setConfirmModal({ title: `Remove ${s.name}?`, message: `${s.name} will be removed from DWA Contacts.`, danger: true, onConfirm: () => { const removed = s; setStewardsData(prev => { const updated = prev.filter(x => x.id !== s.id); saveStewards(updated); return updated; }); setToastMsg({ message: `${s.name} removed`, onUndo: () => { setStewardsData(prev => { const restored = [...prev, removed]; saveStewards(restored); return restored; }); } }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>DEL</button>
                     </div>
                   </div>
@@ -3518,7 +3717,39 @@ export default function DWAApp() {
             </div>
           )}
 
-          {tab === "admin" && adminSection === "useradmin" && (<div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}><AdminFormHeader title="User Admin" /><div style={{ ...card({ padding: "16px" }), ...col(12) }}><div style={{ ...f(12, 700), color: "var(--gold)", letterSpacing: ".1em", marginBottom: 8 }}>All Members ({allApprovedUsers.length})</div><input style={inp()} value={userAdminSearch} onChange={e => setUserAdminSearch(e.target.value)} placeholder="Search by name or email..." /></div>{allApprovedUsers.filter(u => { const q = userAdminSearch.toLowerCase(); return !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q); }).map(u => (<div key={u.uid} style={{ ...card({ padding: "14px" }), ...col(12) }}><div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}><div style={{ width: 40, height: 40, borderRadius: "50%", background: "#2a1f0a", border: "1px solid #6b5a2e", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><span style={{ ...f(12, 600), color: "#c4a44e" }}>{(u.name || "?").split(" ").map(n => n[0]).join("").slice(0, 2)}</span></div><div style={{ flex: 1, minWidth: 0 }}><div style={{ ...f(14, 600), color: "var(--text)" }}>{u.name || "Unknown"}</div><div style={{ ...f(11, 400), color: "var(--text3)" }}>{u.email || "No email"}{u.phone ? " \u00B7 " + u.phone : ""}{u.location ? " \u00B7 " + u.location : ""}</div></div><div style={{ ...f(9, 700), color: u.role === "officer" || u.role === "super" ? "#1a0f00" : u.role === "steward" ? "var(--gold)" : "var(--text3)", background: u.role === "officer" || u.role === "super" ? "linear-gradient(135deg,#a06b18,#c9922a)" : u.role === "steward" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.05)", padding: "3px 8px", borderRadius: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>{u.role || "member"}</div></div><div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}><button onClick={() => { setConfirmModal({ title: "Promote " + u.name + " to Steward?", message: "They can approve members and moderate The Floor.", onConfirm: async () => { await updateUserRole(u.uid, "steward"); setToastMsg({ message: u.name + " is now a Steward" }); } }); }} style={{ padding: "7px 10px", background: "rgba(201,146,42,0.1)", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, color: "var(--gold)", ...f(10, 700), cursor: "pointer" }}>STEWARD</button><button onClick={() => { setConfirmModal({ title: "Promote " + u.name + " to Officer?", message: "They will have full admin access.", onConfirm: async () => { await updateUserRole(u.uid, "officer"); setAdminEmails(prev => prev.includes(u.email) ? prev : [...prev, u.email]); setToastMsg({ message: u.name + " is now an Officer" }); } }); }} style={{ padding: "7px 10px", background: "rgba(201,146,42,0.1)", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, color: "var(--gold)", ...f(10, 700), cursor: "pointer" }}>OFFICER</button><button onClick={() => { setConfirmModal({ title: "Demote " + u.name + " to Member?", message: "They will lose privileges.", danger: true, onConfirm: async () => { await updateUserRole(u.uid, "member"); setAdminEmails(prev => prev.filter(e => e !== u.email)); setToastMsg({ message: u.name + " demoted to Member" }); } }); }} style={{ padding: "7px 10px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--seam)", borderRadius: 6, color: "var(--text3)", ...f(10, 700), cursor: "pointer" }}>MEMBER</button><button onClick={() => { setConfirmModal({ title: "Reset password for " + u.name + "?", message: "A reset link will be sent to " + u.email, onConfirm: async () => { try { await sendPasswordResetToUser(u.email); setToastMsg({ message: "Reset email sent to " + u.email }); } catch(e) { setToastMsg({ message: "Error: " + e.message }); } } }); }} style={{ padding: "7px 10px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--seam)", borderRadius: 6, color: "var(--text2)", ...f(10, 700), cursor: "pointer" }}>RESET PW</button><button onClick={() => { setConfirmModal({ title: "Delete " + u.name + "?", message: "This removes their profile. Cannot be undone.", danger: true, onConfirm: async () => { try { await deleteUserProfile(u.uid); setToastMsg({ message: u.name + " deleted" }); } catch(e) { setToastMsg({ message: "Error: " + e.message }); } } }); }} style={{ padding: "7px 10px", background: "rgba(192,57,43,0.1)", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, color: "var(--red)", ...f(10, 700), cursor: "pointer" }}>DELETE</button></div></div>))}{allApprovedUsers.length === 0 && <div style={{ ...card({ padding: "16px" }), ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>No approved members yet.</div>}</div>)}          {tab === "admin" && adminSection === "banned" && (
+          {tab === "admin" && adminSection === "useradmin" && (
+            <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
+              <AdminFormHeader title="User Admin" />
+              <div style={{ ...card({ padding: "16px" }), ...col(12) }}>
+                <div style={{ ...f(12, 700), color: "var(--gold)", letterSpacing: ".1em", marginBottom: 8 }}>All Members ({allApprovedUsers.length})</div>
+                <input style={inp()} value={userAdminSearch} onChange={e => setUserAdminSearch(e.target.value)} placeholder="Search by name or email..." />
+              </div>
+              {allApprovedUsers.filter(u => { const q = userAdminSearch.toLowerCase(); return !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q); }).map(u => (
+                <div key={u.uid} style={{ ...card({ padding: "14px" }), ...col(12) }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#2a1f0a", border: "1px solid #6b5a2e", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span style={{ ...f(12, 600), color: "#c4a44e" }}>{(u.name || "?").split(" ").map(n => n[0]).join("").slice(0, 2)}</span>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ ...f(14, 600), color: "var(--text)" }}>{u.name || "Unknown"}</div>
+                      <div style={{ ...f(11, 400), color: "var(--text3)" }}>{u.email || "No email"}{u.phone ? ` · ${u.phone}` : ""}{u.location ? ` · ${u.location}` : ""}</div>
+                    </div>
+                    <div style={{ ...f(9, 700), color: u.role === "officer" || u.role === "super" ? "#1a0f00" : u.role === "steward" ? "var(--gold)" : "var(--text3)", background: u.role === "officer" || u.role === "super" ? "linear-gradient(135deg,#a06b18,#c9922a)" : u.role === "steward" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.05)", padding: "3px 8px", borderRadius: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>{u.role || "member"}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <button onClick={() => { setConfirmModal({ title: `Promote ${u.name} to Steward?`, message: "They will be able to approve members and moderate The Floor.", onConfirm: async () => { await updateUserRole(u.uid, "steward"); setToastMsg({ message: `${u.name} is now a Steward` }); } }); }} style={{ padding: "7px 10px", background: "rgba(201,146,42,0.1)", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, color: "var(--gold)", ...f(10, 700), cursor: "pointer" }}>STEWARD</button>
+                    <button onClick={() => { setConfirmModal({ title: `Promote ${u.name} to Officer?`, message: "They will have full admin access.", onConfirm: async () => { await updateUserRole(u.uid, "officer"); setAdminEmails(prev => prev.includes(u.email) ? prev : [...prev, u.email]); setToastMsg({ message: `${u.name} is now an Officer` }); } }); }} style={{ padding: "7px 10px", background: "rgba(201,146,42,0.1)", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, color: "var(--gold)", ...f(10, 700), cursor: "pointer" }}>OFFICER</button>
+                    <button onClick={() => { setConfirmModal({ title: `Demote ${u.name} to Member?`, message: "They will lose steward/officer privileges.", danger: true, onConfirm: async () => { await updateUserRole(u.uid, "member"); setAdminEmails(prev => prev.filter(e => e !== u.email)); setToastMsg({ message: `${u.name} demoted to Member` }); } }); }} style={{ padding: "7px 10px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--seam)", borderRadius: 6, color: "var(--text3)", ...f(10, 700), cursor: "pointer" }}>MEMBER</button>
+                    <button onClick={() => { setConfirmModal({ title: `Reset password for ${u.name}?`, message: `A reset link will be sent to ${u.email}.`, onConfirm: async () => { try { await sendPasswordResetToUser(u.email); setToastMsg({ message: `Reset email sent to ${u.email}` }); } catch(e) { setToastMsg({ message: "Error: " + e.message }); } } }); }} style={{ padding: "7px 10px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--seam)", borderRadius: 6, color: "var(--text2)", ...f(10, 700), cursor: "pointer" }}>RESET PW</button>
+                    <button onClick={() => { setConfirmModal({ title: `Delete ${u.name}'s account?`, message: "This will remove their profile from the app. This cannot be undone.", danger: true, onConfirm: async () => { try { await deleteUserProfile(u.uid); setToastMsg({ message: `${u.name}'s profile deleted` }); } catch(e) { setToastMsg({ message: "Error: " + e.message }); } } }); }} style={{ padding: "7px 10px", background: "rgba(192,57,43,0.1)", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, color: "var(--red)", ...f(10, 700), cursor: "pointer" }}>DELETE</button>
+                  </div>
+                </div>
+              ))}
+              {allApprovedUsers.length === 0 && <div style={{ ...card({ padding: "16px" }), ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>No approved members yet.</div>}
+            </div>
+          )}
+
+          {tab === "admin" && adminSection === "banned" && (
             <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
               <AdminFormHeader title="Banned Users" />
               <div style={{ ...card({ padding: "16px" }), ...col(8) }}>
@@ -3650,6 +3881,8 @@ export default function DWAApp() {
       <Toast2 />
       <OfflineBanner />
       <UpdateBanner />
+      <OfflineMessageOverlay />
+      <SessionWarningModal />
     </>
   );
 }
