@@ -7,7 +7,7 @@ import { getFirestore, doc, updateDoc } from "firebase/firestore";
 // Edit a floor post in-place (text + edited flag)
 async function editFloorPost(postId, updates) {
   const db = getFirestore(getApp());
-  const postRef = doc(db, "floorPosts", postId);
+  const postRef = doc(db, "floor_posts", postId);
   await updateDoc(postRef, updates);
 }
 
