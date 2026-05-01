@@ -1,11 +1,12 @@
 /* DWA v1.5.0 */
 import { useState, useEffect, useRef } from "react";
 import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, uploadDocumentFile, uploadFloorPhoto, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority, registerUser, loginUser, logoutUser, onAuthChange, saveUserProfile, getUserProfile, subscribeToPendingMembers, approveMember, denyMember, subscribeToApprovedMembers, updateUserRole, deleteUserProfile, sendPasswordResetToUser } from "../lib/firebase";
+import { getApp } from "firebase/app";
 import { getFirestore, doc, updateDoc } from "firebase/firestore";
 
 // Edit a floor post in-place (text + edited flag)
 async function editFloorPost(postId, updates) {
-  const db = getFirestore();
+  const db = getFirestore(getApp());
   const postRef = doc(db, "floorPosts", postId);
   await updateDoc(postRef, updates);
 }
@@ -1497,6 +1498,29 @@ export default function DWAApp() {
     );
   };
 
+  // ── FLOOR EDIT MODAL (outside post list to prevent re-render flicker) ──
+  const FloorEditModal = () => {
+    if (!floorEditingPost) return null;
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 10001, background: "rgba(0,0,0,0.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={cancelFloorEdit}>
+        <div onClick={e => e.stopPropagation()} style={{ background: "linear-gradient(135deg, #1c1410, #2a1a12)", border: "1px solid rgba(201,146,42,0.25)", borderRadius: 16, padding: "24px 20px", maxWidth: 400, width: "100%" }}>
+          <div style={{ ...f(20, 400, 'bebas'), color: "var(--gold)", letterSpacing: ".1em", marginBottom: 12 }}>EDIT POST</div>
+          <textarea
+            ref={floorEditRef}
+            defaultValue={floorEditText}
+            key={floorEditingPost}
+            style={{ ...inp(), minHeight: 80, resize: "vertical", lineHeight: 1.5, fontSize: 13, width: "100%", boxSizing: "border-box" }}
+            autoFocus
+          />
+          <div style={{ ...row("center", 10), justifyContent: "flex-end", marginTop: 12 }}>
+            <span onClick={cancelFloorEdit} style={{ ...f(13, 400, 'bebas'), color: "var(--text3)", cursor: "pointer", letterSpacing: ".08em" }}>CANCEL</span>
+            <button onClick={() => handleFloorEditSave(floorEditingPost)} style={{ ...btnGold(), width: "auto", padding: "9px 24px", ...f(13, 400, 'bebas'), letterSpacing: ".1em" }}>SAVE</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // ── TERMS OF USE PAGE ──
   const TermsPage = () => (
     <div style={{ ...col(0), height: "100%", overflow: "hidden" }}>
@@ -2533,7 +2557,7 @@ export default function DWAApp() {
   };
 
   const handleFloorEditSave = async (postId) => {
-    const newText = floorEditText.trim();
+    const newText = (floorEditRef.current?.value || "").trim();
     if (!newText) {
       setToastMsg({ message: "Post can't be empty." });
       return;
@@ -2636,30 +2660,12 @@ export default function DWAApp() {
             </div>
           </div>
           {/* Post body */}
-          {floorEditingPost === post.id ? (
-            <div style={{ ...col(8), marginBottom: 10 }}>
-              <textarea
-                ref={floorEditRef}
-                value={floorEditText}
-                onChange={e => setFloorEditText(e.target.value)}
-                style={{ ...inp(), minHeight: 60, resize: "vertical", lineHeight: 1.5, fontSize: 13 }}
-                autoFocus
-              />
-              <div style={{ ...row("center", 8), justifyContent: "flex-end" }}>
-                <span onClick={cancelFloorEdit} style={{ ...f(11, 500), color: "var(--text3)", cursor: "pointer" }}>Cancel</span>
-                <button onClick={() => handleFloorEditSave(post.id)} style={{ ...btnGold(), width: "auto", padding: "7px 18px", ...f(11, 400, 'bebas'), letterSpacing: ".1em" }}>SAVE</button>
-              </div>
+          {post.text && <div style={{ ...f(13, 400, 'serif'), color: "var(--text)", lineHeight: 1.65, marginBottom: 4 }}>{post.text}</div>}
+          {post.edited && (
+            <div style={{ ...f(10, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginBottom: 8, opacity: 0.7 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 3, marginTop: -1 }}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              edited
             </div>
-          ) : (
-            <>
-              {post.text && <div style={{ ...f(13, 400, 'serif'), color: "var(--text)", lineHeight: 1.65, marginBottom: 4 }}>{post.text}</div>}
-              {post.edited && (
-                <div style={{ ...f(10, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginBottom: 8, opacity: 0.7 }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 3, marginTop: -1 }}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  edited
-                </div>
-              )}
-            </>
           )}
           {post.photoURL && (
             <div style={{ marginBottom: 10 }}>
@@ -2675,7 +2681,7 @@ export default function DWAApp() {
               >
                 Reply{post.replies.length > 0 ? ` (${post.replies.length})` : ""}
               </span>
-              {(post.author === currentUserName || post.uid === currentUid) && floorEditingPost !== post.id && (
+              {(post.author === currentUserName || post.uid === currentUid) && (
                 <span
                   onClick={() => startFloorEdit(post)}
                   style={{ ...f(12, 500), color: "var(--text3)", cursor: "pointer" }}
@@ -3883,6 +3889,7 @@ export default function DWAApp() {
       <UpdateBanner />
       <OfflineMessageOverlay />
       <SessionWarningModal />
+      <FloorEditModal />
     </>
   );
 }
