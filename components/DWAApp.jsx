@@ -642,6 +642,9 @@ const css = `
 
 export default function DWAApp() {
   const [loggedIn, setLoggedIn] = useState(false);
+  const [showNotifyConfirm, setShowNotifyConfirm] = useState(false);
+  const [notifySending, setNotifySending] = useState(false);
+  const [notifyResult, setNotifyResult] = useState(null);
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [showIOSInstallGuide, setShowIOSInstallGuide] = useState(false);
@@ -793,6 +796,8 @@ export default function DWAApp() {
   // Subscribe to Firestore floor posts
   // Apply light/dark theme class to html element
   // PWA Install Prompt
+    const handleSendMeetingNotification = async () => { setNotifySending(true); setNotifyResult(null); try { const info = nextMeeting || {}; const r = await fetch("/api/notifications/meeting-updated", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: info.title || "Union Meeting", date: info.date, time: info.time, location: info.location || "" }) }); setNotifyResult(r.ok ? "sent" : "error"); } catch (e) { console.error(e); setNotifyResult("error"); } setNotifySending(false); setTimeout(() => { setShowNotifyConfirm(false); setNotifyResult(null); }, 3000); };
+
   useEffect(() => {
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
     if (isStandalone) { setShowInstallBanner(false); setShowIOSInstallGuide(false); return; }
@@ -3234,7 +3239,8 @@ export default function DWAApp() {
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
       <div style={{ ...f(10, 700), color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".15em" }}>{title}</div>
       <button onClick={() => setAdminSection(null)} style={{ ...f(12, 700), color: "var(--text3)", background: "none", border: "none", cursor: "pointer", letterSpacing: ".1em" }}>← BACK</button>
-    </div>
+          {showNotifyConfirm && (<div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }} onClick={() => { if (!notifySending) { setShowNotifyConfirm(false); setNotifyResult(null); } }}><div style={{ background: "#1a1a2e", border: "2px solid #d4a843", borderRadius: 12, padding: "24px 28px", maxWidth: 380, width: "90%", textAlign: "center" }} onClick={e => e.stopPropagation()}>{notifyResult === "sent" ? (<><div style={{ fontSize: 36, marginBottom: 8 }}>Done</div><div style={{ color: "#d4a843", fontWeight: 700 }}>Notification Sent!</div></>) : notifyResult === "error" ? (<><div style={{ color: "#e74c3c", fontWeight: 700 }}>Failed to send</div></>) : (<><div style={{ color: "#d4a843", fontWeight: 700, fontSize: 17, marginBottom: 12 }}>Send Meeting Notification?</div><div style={{ color: "#ccc", fontSize: 14, marginBottom: 20 }}>This will notify all members.</div><div style={{ display: "flex", gap: 12, justifyContent: "center" }}><button style={{ padding: "10px 24px", background: "transparent", border: "1px solid #555", color: "#ccc", borderRadius: 8, cursor: "pointer" }} onClick={() => setShowNotifyConfirm(false)}>Cancel</button><button style={{ padding: "10px 24px", background: "#d4a843", border: "none", color: "#1a1a2e", borderRadius: 8, cursor: "pointer", fontWeight: 700 }} onClick={handleSendMeetingNotification} disabled={notifySending}>{notifySending ? "Sending..." : "Send It"}</button></div></>)}</div></div>)}
+</div>
   );
 
   return (
@@ -3409,6 +3415,9 @@ export default function DWAApp() {
                 ))}
                 {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>✓ Saved!</div>}
                 <button style={btnGold()} onClick={() => { const info = { ...editMeeting }; setNextMeeting(info); saveMeetingInfo(info); saveFlash(() => {}); }}>SAVE MEETING INFO</button>
+              {nextMeeting?.date && nextMeeting?.time && (
+                <button style={{ ...btnGold(), marginTop: 10, background: "transparent", border: "2px solid #d4a843", color: "#d4a843" }} onClick={() => setShowNotifyConfirm(true)}>SEND MEETING NOTIFICATION</button>
+              )}
               </div>
               <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>Preview: {editMeeting.title} · {editMeeting.date} · {editMeeting.location}</div>
             </div>
