@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, uploadDocumentFile, uploadFloorPhoto, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority, registerUser, loginUser, logoutUser, onAuthChange, saveUserProfile, getUserProfile, subscribeToPendingMembers, approveMember, denyMember, subscribeToApprovedMembers, updateUserRole, deleteUserProfile, sendPasswordResetToUser } from "../lib/firebase";
 import { getApp } from "firebase/app";
 import { getFirestore, doc, updateDoc } from "firebase/firestore";
+import usePushNotifications from "../hooks/usePushNotifications";
 
 // Edit a floor post in-place (text + edited flag)
 async function editFloorPost(postId, updates) {
@@ -643,6 +644,7 @@ const css = `
 export default function DWAApp() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [showNotifyConfirm, setShowNotifyConfirm] = useState(false);
+  const pushNotifs = (typeof window !== "undefined") ? usePushNotifications() : { requestPermission: () => {}, permissionState: "default" };
   const [notifySending, setNotifySending] = useState(false);
   const [notifyResult, setNotifyResult] = useState(null);
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
@@ -797,6 +799,8 @@ export default function DWAApp() {
   // Apply light/dark theme class to html element
   // PWA Install Prompt
     const handleSendMeetingNotification = async () => { setNotifySending(true); setNotifyResult(null); try { const info = nextMeeting || {}; const r = await fetch("/api/notifications/meeting-updated", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: info.title || "Union Meeting", date: info.date, time: info.time, location: info.location || "" }) }); setNotifyResult(r.ok ? "sent" : "error"); } catch (e) { console.error(e); setNotifyResult("error"); } setNotifySending(false); setTimeout(() => { setShowNotifyConfirm(false); setNotifyResult(null); }, 3000); };
+
+    useEffect(() => { if (loggedIn && pushNotifs.permissionState === "default") { setTimeout(() => pushNotifs.requestPermission(), 3000); } }, [loggedIn, pushNotifs.permissionState]);
 
   useEffect(() => {
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
