@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     for (let i = 0; i < allTokens.length; i += 500) {
       const batch = allTokens.slice(i, i + 500);
       const response = await adminMessaging.sendEachForMulticast({
-        tokens: batch, data, webpush: { notification },
+                tokens: batch, data,
       });
       sent += response.successCount;
       failed += response.failureCount;
