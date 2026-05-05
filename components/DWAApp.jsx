@@ -4,6 +4,7 @@ import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply,
 import { getApp } from "firebase/app";
 import { getFirestore, doc, updateDoc } from "firebase/firestore";
 import { usePushNotifications } from "../hooks/usePushNotifications";
+import ProfilePage from "./ProfilePage";
 
 // Edit a floor post in-place (text + edited flag)
 async function editFloorPost(postId, updates) {
@@ -673,7 +674,7 @@ export default function DWAApp() {
   const [currentUid, setCurrentUid] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [memberEmails, setMemberEmails] = useState([]);
-  const [pendingMembers, setPendingMembers] = useState([]);
+  const [pendingMembers, setPendingMembers] = useState([]);  const [showProfile, setShowProfile] = useState(false);
 
   const [seniority, setSeniority] = useState([
     { id: 1, name: "Robert Martinez", hireDate: "1998-03-14", location: "Jersey City" },
