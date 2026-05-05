@@ -1,47 +1,52 @@
 // pages/api/notifications/send.js
-// Send push notifications — admin/officer only
-const { adminMessaging } = require("../../../lib/firebase-admin");
+const { adminMessaging, adminDb } = require("../../../lib/firebase-admin");
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   try {
-    const { title, body, type, url, id, targetRole, tokens, topic } = req.body;
+    const { title, body, type, url, tokens } = req.body;
     if (!title || !body || !type) return res.status(400).json({ error: "title, body, type required" });
 
-    const data = {
-      type: type || "general",
-      title,
-      body,
-      url: url || "/",
-      tag: "dwa-" + type,
-    };
-    if (id) data.id = id;
+    const notification = { title, body };
+    const data = { type: type || "general", title, body, url: url || "/" };
 
-    // Send to topic if provided
-    if (topic) {
-      const response = await adminMessaging.send({
-        topic,
-        data,
-        webpush: { notification: { title, body, icon: "/icons/dwa-icon-192.png" } },
+    let allTokens = tokens || [];
+
+    if (allTokens.length === 0) {
+      const snapshot = await adminDb.collection("fcm_tokens").get();
+      snapshot.forEach(doc => {
+        const t = doc.data().token;
+        if (t) allTokens.push(t);
       });
-      return res.json({ success: true, messageId: response });
     }
 
-    // Send to specific tokens if provided
-    if (tokens && tokens.length > 0) {
+    if (allTokens.length === 0) {
+      return res.json({ success: false, message: "No registered devices found", totalDevices: 0 });
+    }
+
+    let sent = 0, failed = 0, stale = [];
+    for (let i = 0; i < allTokens.length; i += 500) {
+      const batch = allTokens.slice(i, i + 500);
       const response = await adminMessaging.sendEachForMulticast({
-        tokens,
-        data,
-        webpush: { notification: { title, body, icon: "/icons/dwa-icon-192.png" } },
+        tokens: batch, data, webpush: { notification },
       });
-      return res.json({ success: true, sent: response.successCount, failed: response.failureCount });
+      sent += response.successCount;
+      failed += response.failureCount;
+      response.responses.forEach((r, idx) => {
+        if (r.error && (r.error.code === "messaging/invalid-registration-token" || r.error.code === "messaging/registration-token-not-registered")) {
+          stale.push(batch[idx]);
+        }
+      });
     }
 
-    // TODO: Wire up DB to fetch tokens by role
-    return res.json({ success: true, message: "Notification queued (wire up DB token query)" });
+    for (const t of stale) {
+      try { await adminDb.collection("fcm_tokens").doc(t).delete(); } catch (e) {}
+    }
+
+    return res.json({ success: true, sent, failed, staleRemoved: stale.length, totalDevices: allTokens.length });
   } catch (err) {
-    console.error("[DWA] Send notification error:", err);
+    console.error("[DWA] Send error:", err);
     return res.status(500).json({ error: err.message || "Failed to send" });
   }
 }
