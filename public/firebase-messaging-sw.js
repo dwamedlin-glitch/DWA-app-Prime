@@ -20,8 +20,8 @@ messaging.onBackgroundMessage((payload) => {
   const title = notification.title || data.title || "DWA Update";
   const options = {
     body: notification.body || data.body || "",
-    icon: "/icons/dwa-icon-192.png",
-    badge: "/icons/dwa-badge-72.png",
+          icon: "/images/dwa-pwa-192.png",
+          badge: "/images/dwa-pwa-192.png",
     tag: data.tag || "dwa-general",
     data: { url: data.url || "/", type: data.type || "general", id: data.id || null },
     renotify: true,
