@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, uploadDocumentFile, uploadFloorPhoto, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority, registerUser, loginUser, logoutUser, onAuthChange, saveUserProfile, getUserProfile, subscribeToPendingMembers, approveMember, denyMember, subscribeToApprovedMembers, updateUserRole, deleteUserProfile, sendPasswordResetToUser } from "../lib/firebase";
 import { getApp } from "firebase/app";
 import { getFirestore, doc, updateDoc } from "firebase/firestore";
+import ProfilePage from "./ProfilePage";
 
 // Edit a floor post in-place (text + edited flag)
 async function editFloorPost(postId, updates) {
@@ -689,6 +690,7 @@ export default function DWAApp() {
   const [loginError, setLoginError] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(true);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [confirmModal, setConfirmModal] = useState(null); // { title, message, onConfirm, danger }
   const [toastMsg, setToastMsg] = useState(null); // { message, onUndo }
@@ -3314,6 +3316,7 @@ export default function DWAApp() {
               <button onClick={() => { setTab("home"); setAdminSection(null); }} style={{ ...row("center", 6), color: "var(--gold)", background: "none", border: "none", cursor: "pointer", ...f(12, 700), letterSpacing: ".1em" }}>← HOME</button>
             )}
           </div>
+          <button onClick={() => setShowProfile(true)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--gold)",fontSize:22,padding:"4px 8px"}} title="My Profile">👤</button>
           <button onClick={() => setShowSettingsPanel(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", position: "relative" }}>
             <SectionIcon icon="gear" size={20} />
           </button>
@@ -3951,6 +3954,7 @@ export default function DWAApp() {
       <OfflineMessageOverlay />
       <SessionWarningModal />
       <FloorEditModal />
+      {showProfile && <ProfilePage onBack={() => setShowProfile(false)} />}
     </>
   );
 }
