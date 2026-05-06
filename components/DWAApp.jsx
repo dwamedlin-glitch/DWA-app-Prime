@@ -1,9 +1,8 @@
-/* DWA v1.5.0 */
+j/* DWA v1.5.0 */
 import { useState, useEffect, useRef } from "react";
 import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, uploadDocumentFile, uploadFloorPhoto, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority, registerUser, loginUser, logoutUser, onAuthChange, saveUserProfile, getUserProfile, subscribeToPendingMembers, approveMember, denyMember, subscribeToApprovedMembers, updateUserRole, deleteUserProfile, sendPasswordResetToUser } from "../lib/firebase";
 import { getApp } from "firebase/app";
 import { getFirestore, doc, updateDoc } from "firebase/firestore";
-import { usePushNotifications } from "../hooks/usePushNotifications";
 import ProfilePage from "./ProfilePage";
 
 // Edit a floor post in-place (text + edited flag)
@@ -13,7 +12,7 @@ async function editFloorPost(postId, updates) {
   await updateDoc(postRef, updates);
 }
 
-// ── PLACEHOLDER BASE64 ASSETS (replace with real ones before deploy) ──
+// ── PLACEHOLDER BASE64 ASSETS (replace with real ones before deploy) ──h
 const TEXTURE_B64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E";
 const LOGO_B64 = "/images/dwa-logo-login.png";
 
@@ -485,13 +484,7 @@ F. Any expense exceeding $100.00 must be pre-approved by majority vote of the me
 const CBA_ARTICLES_ES = CBA_ARTICLES.map(a => ({ ...a, title: a.title + " (ES)" })); // placeholder
 const BYLAWS_ARTICLES_ES = BYLAWS_ARTICLES.map(a => ({ ...a, title: a.title + " (ES)" }));
 
-const STEWARDS = [
-  { id: 5, name: "Anthony Santiago", title: "Shop Steward", dept: "", shifts: "", phone: "3473867440" },
-  { id: 6, name: "Greg Van Peenan", title: "Shop Steward", dept: "", shifts: "", phone: "9736041930" },
-  { id: 10, name: "Kyle Clark", title: "Shop Steward", dept: "Florence", shifts: "", phone: "6094004892" },
-  { id: 11, name: "James Walker", title: "Shop Steward", dept: "", shifts: "", phone: "6092514397" },
-  { id: 12, name: "Tyrik Darby", title: "Shop Steward", dept: "", shifts: "", phone: "2013750448" },
-];
+const STEWARDS = [];
 
 const ISSUE_TYPES = [
   "Select issue type…",
@@ -644,17 +637,15 @@ const css = `
 
 export default function DWAApp() {
   const [loggedIn, setLoggedIn] = useState(false);
-  const [showNotifyConfirm, setShowNotifyConfirm] = useState(false);
-  const pushNotifs = (typeof window !== "undefined") ? usePushNotifications() : { requestPermission: () => {}, permissionState: "default" };
-  const [notifySending, setNotifySending] = useState(false);
-  const [notifyResult, setNotifyResult] = useState(null);
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [showIOSInstallGuide, setShowIOSInstallGuide] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [role, setRole] = useState("member");
   const isAdmin = role === "super" || role === "admin";
+  const isSteward = role === "steward";
   const isSuper = role === "super";
+  const hasOfficialAccess = isAdmin || isSteward;
   const [currentUserEmail, setCurrentUserEmail] = useState("");
   const SUPER_ADMIN_EMAIL = "dwamedlin@gmail.com";
   const [adminEmails, setAdminEmails] = useState(["admin@dwa.org"]);
@@ -674,7 +665,7 @@ export default function DWAApp() {
   const [currentUid, setCurrentUid] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [memberEmails, setMemberEmails] = useState([]);
-  const [pendingMembers, setPendingMembers] = useState([]);  const [showProfile, setShowProfile] = useState(false);
+  const [pendingMembers, setPendingMembers] = useState([]);
 
   const [seniority, setSeniority] = useState([
     { id: 1, name: "Robert Martinez", hireDate: "1998-03-14", location: "Jersey City" },
@@ -699,6 +690,7 @@ export default function DWAApp() {
   const [loginError, setLoginError] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(true);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [confirmModal, setConfirmModal] = useState(null); // { title, message, onConfirm, danger }
   const [toastMsg, setToastMsg] = useState(null); // { message, onUndo }
@@ -799,10 +791,6 @@ export default function DWAApp() {
   // Subscribe to Firestore floor posts
   // Apply light/dark theme class to html element
   // PWA Install Prompt
-    const handleSendMeetingNotification = async () => { setNotifySending(true); setNotifyResult(null); try { const info = nextMeeting || {}; const r = await fetch("/api/notifications/meeting-updated", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: info.title || "Union Meeting", date: info.date, time: info.time, location: info.location || "" }) }); setNotifyResult(r.ok ? "sent" : "error"); } catch (e) { console.error(e); setNotifyResult("error"); } setNotifySending(false); setTimeout(() => { setShowNotifyConfirm(false); setNotifyResult(null); }, 3000); };
-
-    useEffect(() => { if (loggedIn && pushNotifs.permissionState === "default") { setTimeout(() => pushNotifs.requestPermission(), 3000); } }, [loggedIn, pushNotifs.permissionState]);
-
   useEffect(() => {
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
     if (isStandalone) { setShowInstallBanner(false); setShowIOSInstallGuide(false); return; }
@@ -1113,7 +1101,7 @@ export default function DWAApp() {
       setCurrentUserEmail(e);
       if (e === SUPER_ADMIN_EMAIL) setRole("super");
       else if (adminEmails.map(a => a.toLowerCase()).includes(e)) setRole("admin");
-      else if (profile?.role === "steward") setRole("admin");
+      else if (profile?.role === "steward") setRole("steward");
       else setRole("member");
       setLoggedIn(true);
       setAuthLoading(false);
@@ -2700,7 +2688,7 @@ export default function DWAApp() {
                 </span>
               )}
             </div>
-            {isAdmin && (
+            {(isAdmin || isSteward) && (
               <div style={{ ...row("center", 6) }}>
                 {post.author !== currentUserName && post.uid !== currentUid && !bannedUsers.some(b => b.name === post.author) && (
                   <span onClick={() => handleBanUser(post.author, post.id)} style={{ ...f(11, 600), color: "#e87a7a", cursor: "pointer", background: "#2a1010", padding: "3px 10px", borderRadius: 8 }}>Ban</span>
@@ -2725,7 +2713,7 @@ export default function DWAApp() {
                     <span style={{ ...f(10, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginLeft: "auto" }}>{formatFloorTime(reply.time)}</span>
                   </div>
                   <div style={{ ...f(12, 400, 'serif'), color: "var(--text2)", lineHeight: 1.6, paddingLeft: 32 }}>{reply.text}</div>
-                  {isAdmin && (
+                  {(isAdmin || isSteward) && (
                     <div style={{ paddingLeft: 32, marginTop: 4 }}>
                       <span onClick={() => handleFloorDelete(post.id, reply.id)} style={{ ...f(10, 600), color: "#a04040", cursor: "pointer" }}>Delete</span>
                     </div>
@@ -3136,6 +3124,71 @@ export default function DWAApp() {
     const needsAttention = [];
     if (pendingMembers.length > 0) needsAttention.push({ icon: "users", title: `${pendingMembers.length} member request${pendingMembers.length > 1 ? "s" : ""} waiting`, sub: "Tap to approve or deny", action: () => setAdminSection("members"), color: "#c0392b", bg: "rgba(192,57,43,0.08)", border: "rgba(192,57,43,0.2)" });
 
+    // ── STEWARD LIMITED VIEW ──
+    if (isSteward) {
+      return (
+        <div className="rise" style={{ padding: "16px", ...col(14) }}>
+          <div style={{ ...card({ padding: "16px 18px" }) }}>
+            <div style={{ ...f(10, 700), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".15em", marginBottom: 4 }}>Steward Panel</div>
+            <div style={{ ...f(16, 600), color: "var(--cream)" }}>Hey — here's what needs you</div>
+            <div style={{ ...f(9, 700), color: "var(--gold)", background: "rgba(201,146,42,0.15)", padding: "3px 8px", borderRadius: 6, letterSpacing: ".1em", display: "inline-block", marginTop: 8 }}>STEWARD</div>
+          </div>
+
+          {needsAttention.length > 0 && (
+            <div style={col(6)}>
+              <div style={{ ...f(9, 700), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".15em" }}>Needs Attention</div>
+              {needsAttention.map((item, i) => (
+                <div key={i} onClick={item.action} className="tile" style={{ background: item.bg, border: `1.5px solid ${item.border}`, borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 42, height: 42, borderRadius: "50%", background: item.border, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: item.color }}>
+                    <SectionIcon icon={item.icon} size={18} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ ...f(14, 600), color: item.color }}>{item.title}</div>
+                    <div style={{ ...f(11, 400, "serif"), color: item.color, opacity: 0.8, fontStyle: "italic", marginTop: 2 }}>{item.sub}</div>
+                  </div>
+                  <div style={{ ...f(14, 700), color: item.color }}>→</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {needsAttention.length === 0 && (
+            <div style={{ background: "rgba(45,122,79,0.08)", border: "1.5px solid rgba(45,122,79,0.2)", borderRadius: 10, padding: "14px 18px", display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(45,122,79,0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--green)", flexShrink: 0 }}>
+                <SectionIcon icon="check" size={16} />
+              </div>
+              <div style={{ ...f(13, 400, "serif"), color: "var(--green)", fontStyle: "italic" }}>All clear — nothing needs your attention right now.</div>
+            </div>
+          )}
+
+          <div style={col(8)}>
+            <div style={{ ...f(9, 700), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".15em" }}>Steward Actions</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {[
+                { icon: "users", label: "Member Requests", action: () => setAdminSection("members") },
+                { icon: "shield", label: "Update Seniority", action: () => setAdminSection("seniority") },
+                ...(bannedUsers.length > 0 ? [{ icon: "x", label: `Banned (${bannedUsers.length})`, action: () => setAdminSection("banned") }] : []),
+              ].map(qa => (
+                <div key={qa.label} onClick={qa.action} className="tile" style={{ ...tileStyle(), borderRadius: 10, padding: "14px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, ...tileIconStyle(), display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gold)" }}>
+                    <SectionIcon icon={qa.icon} size={18} />
+                  </div>
+                  <div style={{ ...f(12, 600, "bebas"), color: "var(--cream)", letterSpacing: ".05em" }}>{qa.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ ...card({ padding: "14px 16px" }), display: "flex", alignItems: "center", gap: 10 }}>
+            <SectionIcon icon="info" size={16} />
+            <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", lineHeight: 1.5 }}>
+              As a steward, you can approve new members, update the seniority list, and moderate The Floor (ban/delete posts). Contact an officer for other admin tasks.
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="rise" style={{ padding: "16px", ...col(14) }}>
         {/* Header */}
@@ -3237,15 +3290,14 @@ export default function DWAApp() {
     { id: "documents", label: "Docs", icon: "file" },
     { id: "zoom", label: "Zoom", icon: "video" },
     { id: "minutes", label: "Minutes", icon: "notes" },
-    ...(isAdmin ? [{ id: "admin", label: "Officials", icon: "shield" }] : []),
+    ...(hasOfficialAccess ? [{ id: "admin", label: "Officials", icon: "shield" }] : []),
   ];
 
   const AdminFormHeader = ({ title }) => (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
       <div style={{ ...f(10, 700), color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".15em" }}>{title}</div>
       <button onClick={() => setAdminSection(null)} style={{ ...f(12, 700), color: "var(--text3)", background: "none", border: "none", cursor: "pointer", letterSpacing: ".1em" }}>← BACK</button>
-          {showNotifyConfirm && (<div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }} onClick={() => { if (!notifySending) { setShowNotifyConfirm(false); setNotifyResult(null); } }}><div style={{ background: "#1a1a2e", border: "2px solid #d4a843", borderRadius: 12, padding: "24px 28px", maxWidth: 380, width: "90%", textAlign: "center" }} onClick={e => e.stopPropagation()}>{notifyResult === "sent" ? (<><div style={{ fontSize: 36, marginBottom: 8 }}>Done</div><div style={{ color: "#d4a843", fontWeight: 700 }}>Notification Sent!</div></>) : notifyResult === "error" ? (<><div style={{ color: "#e74c3c", fontWeight: 700 }}>Failed to send</div></>) : (<><div style={{ color: "#d4a843", fontWeight: 700, fontSize: 17, marginBottom: 12 }}>Send Meeting Notification?</div><div style={{ color: "#ccc", fontSize: 14, marginBottom: 20 }}>This will notify all members.</div><div style={{ display: "flex", gap: 12, justifyContent: "center" }}><button style={{ padding: "10px 24px", background: "transparent", border: "1px solid #555", color: "#ccc", borderRadius: 8, cursor: "pointer" }} onClick={() => setShowNotifyConfirm(false)}>Cancel</button><button style={{ padding: "10px 24px", background: "#d4a843", border: "none", color: "#1a1a2e", borderRadius: 8, cursor: "pointer", fontWeight: 700 }} onClick={handleSendMeetingNotification} disabled={notifySending}>{notifySending ? "Sending..." : "Send It"}</button></div></>)}</div></div>)}
-</div>
+    </div>
   );
 
   return (
@@ -3264,9 +3316,12 @@ export default function DWAApp() {
               <button onClick={() => { setTab("home"); setAdminSection(null); }} style={{ ...row("center", 6), color: "var(--gold)", background: "none", border: "none", cursor: "pointer", ...f(12, 700), letterSpacing: ".1em" }}>← HOME</button>
             )}
           </div>
-          <button onClick={() => setShowSettingsPanel(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", position: "relative" }}>
-            <SectionIcon icon="gear" size={20} />
-          </button>
+          <div style={row("center", 8)}>
+            <button onClick={() => setShowProfile(true)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--gold)",fontSize:22,padding:"4px 8px"}} title="My Profile">👤</button>
+            <button onClick={() => setShowSettingsPanel(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", position: "relative" }}>
+              <SectionIcon icon="gear" size={20} />
+            </button>
+          </div>
         </div>
 
         <div className="scroll" style={{ flex: 1, position: "relative", zIndex: 1 }}>
@@ -3419,10 +3474,7 @@ export default function DWAApp() {
                   </div>
                 ))}
                 {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>✓ Saved!</div>}
-                <button style={btnGold()} onClick={() => { const info = { ...editMeeting }; setNextMeeting(info); saveMeetingInfo(info); saveFlash(() => {}); }}>SAVE MEETING INFO</button>
-              {nextMeeting?.date && nextMeeting?.time && (
-                <button style={{ ...btnGold(), marginTop: 10, background: "transparent", border: "2px solid #d4a843", color: "#d4a843" }} onClick={() => setShowNotifyConfirm(true)}>SEND MEETING NOTIFICATION</button>
-              )}
+                <button style={btnGold()} onClick={() => { const info = { ...editMeeting }; setNextMeeting(info); saveMeetingInfo(info); saveFlash(() => {}); try { fetch('/api/notifications/meeting-updated', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: info.title || 'Union Meeting', date: info.date, time: info.time, location: info.location || '', zoomId: zoomInfo?.id || '', zoomPasscode: zoomInfo?.passcode || '', zoomLink: zoomInfo?.link || '' }) }); } catch(e) { console.log('Meeting notification failed:', e); } }}>SAVE MEETING INFO</button>
               </div>
               <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>Preview: {editMeeting.title} · {editMeeting.date} · {editMeeting.location}</div>
             </div>
@@ -3757,9 +3809,9 @@ export default function DWAApp() {
                     <div style={{ ...f(9, 700), color: u.role === "officer" || u.role === "super" ? "#1a0f00" : u.role === "steward" ? "var(--gold)" : "var(--text3)", background: u.role === "officer" || u.role === "super" ? "linear-gradient(135deg,#a06b18,#c9922a)" : u.role === "steward" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.05)", padding: "3px 8px", borderRadius: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>{u.role || "member"}</div>
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <button onClick={() => { setConfirmModal({ title: `Promote ${u.name} to Steward?`, message: "They will be able to approve members and moderate The Floor.", onConfirm: async () => { await updateUserRole(u.uid, "steward"); setToastMsg({ message: `${u.name} is now a Steward` }); } }); }} style={{ padding: "7px 10px", background: "rgba(201,146,42,0.1)", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, color: "var(--gold)", ...f(10, 700), cursor: "pointer" }}>STEWARD</button>
-                    <button onClick={() => { setConfirmModal({ title: `Promote ${u.name} to Officer?`, message: "They will have full admin access.", onConfirm: async () => { await updateUserRole(u.uid, "officer"); setAdminEmails(prev => prev.includes(u.email) ? prev : [...prev, u.email]); setToastMsg({ message: `${u.name} is now an Officer` }); } }); }} style={{ padding: "7px 10px", background: "rgba(201,146,42,0.1)", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, color: "var(--gold)", ...f(10, 700), cursor: "pointer" }}>OFFICER</button>
-                    <button onClick={() => { setConfirmModal({ title: `Demote ${u.name} to Member?`, message: "They will lose steward/officer privileges.", danger: true, onConfirm: async () => { await updateUserRole(u.uid, "member"); setAdminEmails(prev => prev.filter(e => e !== u.email)); setToastMsg({ message: `${u.name} demoted to Member` }); } }); }} style={{ padding: "7px 10px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--seam)", borderRadius: 6, color: "var(--text3)", ...f(10, 700), cursor: "pointer" }}>MEMBER</button>
+                    <button onClick={() => { setConfirmModal({ title: `Demote ${u.name} to Member?`, message: "They will lose steward/officer privileges.", danger: true, onConfirm: async () => { await updateUserRole(u.uid, "member"); setAdminEmails(prev => prev.filter(e => e !== u.email)); setToastMsg({ message: `${u.name} demoted to Member` }); } }); }} style={{ padding: "7px 10px", background: u.role === "member" || !u.role ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.03)", border: u.role === "member" || !u.role ? "1px solid rgba(201,146,42,0.3)" : "1px solid var(--seam)", borderRadius: 6, color: u.role === "member" || !u.role ? "var(--gold)" : "var(--text3)", ...f(10, 700), cursor: "pointer" }}>MEMBER</button>
+                    <button onClick={() => { setConfirmModal({ title: `Promote ${u.name} to Steward?`, message: "They will be able to approve members, update seniority, and moderate The Floor.", onConfirm: async () => { await updateUserRole(u.uid, "steward"); setToastMsg({ message: `${u.name} is now a Steward` }); } }); }} style={{ padding: "7px 10px", background: u.role === "steward" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.03)", border: u.role === "steward" ? "1px solid rgba(201,146,42,0.3)" : "1px solid var(--seam)", borderRadius: 6, color: u.role === "steward" ? "var(--gold)" : "var(--text3)", ...f(10, 700), cursor: "pointer" }}>STEWARD</button>
+                    <button onClick={() => { setConfirmModal({ title: `Promote ${u.name} to Officer?`, message: "They will have full admin access.", onConfirm: async () => { await updateUserRole(u.uid, "officer"); setAdminEmails(prev => prev.includes(u.email) ? prev : [...prev, u.email]); setToastMsg({ message: `${u.name} is now an Officer` }); } }); }} style={{ padding: "7px 10px", background: u.role === "officer" || u.role === "super" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.03)", border: u.role === "officer" || u.role === "super" ? "1px solid rgba(201,146,42,0.3)" : "1px solid var(--seam)", borderRadius: 6, color: u.role === "officer" || u.role === "super" ? "var(--gold)" : "var(--text3)", ...f(10, 700), cursor: "pointer" }}>OFFICER</button>
                     <button onClick={() => { setConfirmModal({ title: `Reset password for ${u.name}?`, message: `A reset link will be sent to ${u.email}.`, onConfirm: async () => { try { await sendPasswordResetToUser(u.email); setToastMsg({ message: `Reset email sent to ${u.email}` }); } catch(e) { setToastMsg({ message: "Error: " + e.message }); } } }); }} style={{ padding: "7px 10px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--seam)", borderRadius: 6, color: "var(--text2)", ...f(10, 700), cursor: "pointer" }}>RESET PW</button>
                     <button onClick={() => { setConfirmModal({ title: `Delete ${u.name}'s account?`, message: "This will remove their profile from the app. This cannot be undone.", danger: true, onConfirm: async () => { try { await deleteUserProfile(u.uid); setToastMsg({ message: `${u.name}'s profile deleted` }); } catch(e) { setToastMsg({ message: "Error: " + e.message }); } } }); }} style={{ padding: "7px 10px", background: "rgba(192,57,43,0.1)", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, color: "var(--red)", ...f(10, 700), cursor: "pointer" }}>DELETE</button>
                   </div>
@@ -3904,6 +3956,7 @@ export default function DWAApp() {
       <OfflineMessageOverlay />
       <SessionWarningModal />
       <FloorEditModal />
+      {showProfile && <ProfilePage onBack={() => setShowProfile(false)} />}
     </>
   );
 }
