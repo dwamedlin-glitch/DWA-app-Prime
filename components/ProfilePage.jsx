@@ -93,6 +93,8 @@ export default function ProfilePage({ onBack, userId }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [flash, setFlash] = useState(null);
+  const isOwnProfile = !userId || userId === getAuth(getApp()).currentUser?.uid;
+  const readOnly = !isOwnProfile;
 
   // Editable fields
   const [name, setName] = useState("");
@@ -204,7 +206,7 @@ export default function ProfilePage({ onBack, userId }) {
       {/* Header */}
       <div style={styles.header}>
         <button style={styles.backBtn} onClick={onBack}>←</button>
-        <div style={styles.title}>My Profile</div>
+        <div style={styles.title}>{readOnly ? `${name || "Member"}'s Profile` : "My Profile"}</div>
       </div>
 
       <div style={styles.body}>
@@ -225,7 +227,7 @@ export default function ProfilePage({ onBack, userId }) {
 
           <div style={styles.fieldGroup}>
             <label style={styles.label}>Full Name</label>
-            <input style={styles.input} value={name} onChange={e => setName(e.target.value)} placeholder="Your name" />
+            {readOnly ? <div style={styles.inputReadonly}>{name || "—"}</div> : <input style={styles.input} value={name} onChange={e => setName(e.target.value)} placeholder="Your name" />}
           </div>
 
           <div style={styles.fieldGroup}>
@@ -236,48 +238,48 @@ export default function ProfilePage({ onBack, userId }) {
 
           <div style={styles.fieldGroup}>
             <label style={styles.label}>Phone</label>
-            <input style={styles.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="Your phone number" type="tel" />
+            {readOnly ? <div style={styles.inputReadonly}>{phone || "—"}</div> : <input style={styles.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="Your phone number" type="tel" />}
           </div>
 
           <div style={styles.fieldGroup}>
             <label style={styles.label}>Work Location</label>
-            <input style={styles.input} value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Florence" />
+            {readOnly ? <div style={styles.inputReadonly}>{location || "—"}</div> : <input style={styles.input} value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Florence" />}
           </div>
         </div>
 
         {/* Home Address (Optional) */}
         <div style={styles.section}>
-          <div style={styles.sectionTitle}>Home Address <span style={{ ...f(10, 400), color: TEXT_DIM, textTransform: "none", letterSpacing: 0 }}>— optional, for union election records</span></div>
+          <div style={styles.sectionTitle}>Home Address <span style={{ ...f(10, 400), color: TEXT_DIM, textTransform: "none", letterSpacing: 0 }}>— {readOnly ? "for union election records" : "optional, for union election records"}</span></div>
 
           <div style={styles.fieldGroup}>
             <label style={styles.label}>Street</label>
-            <input style={styles.input} value={street} onChange={e => setStreet(e.target.value)} placeholder="123 Main St" />
+            {readOnly ? <div style={styles.inputReadonly}>{street || "—"}</div> : <input style={styles.input} value={street} onChange={e => setStreet(e.target.value)} placeholder="123 Main St" />}
           </div>
 
           <div style={{ display: "flex", gap: 10 }}>
             <div style={{ ...styles.fieldGroup, flex: 2 }}>
               <label style={styles.label}>City</label>
-              <input style={styles.input} value={city} onChange={e => setCity(e.target.value)} placeholder="City" />
+              {readOnly ? <div style={styles.inputReadonly}>{city || "—"}</div> : <input style={styles.input} value={city} onChange={e => setCity(e.target.value)} placeholder="City" />}
             </div>
             <div style={{ ...styles.fieldGroup, flex: 1 }}>
               <label style={styles.label}>State</label>
-              <input style={styles.input} value={state} onChange={e => setState(e.target.value)} placeholder="NJ" maxLength={2} />
+              {readOnly ? <div style={styles.inputReadonly}>{state || "—"}</div> : <input style={styles.input} value={state} onChange={e => setState(e.target.value)} placeholder="NJ" maxLength={2} />}
             </div>
             <div style={{ ...styles.fieldGroup, flex: 1 }}>
               <label style={styles.label}>Zip</label>
-              <input style={styles.input} value={zip} onChange={e => setZip(e.target.value)} placeholder="08505" maxLength={10} />
+              {readOnly ? <div style={styles.inputReadonly}>{zip || "—"}</div> : <input style={styles.input} value={zip} onChange={e => setZip(e.target.value)} placeholder="08505" maxLength={10} />}
             </div>
           </div>
         </div>
 
-        {/* Save */}
-        <button
+        {/* Save - only show for own profile */}
+        {!readOnly && <button
           style={saving ? styles.saveBtnDisabled : styles.saveBtn}
           onClick={handleSave}
           disabled={saving}
         >
           {saving ? "Saving..." : "Save Changes"}
-        </button>
+        </button>}
 
         <div style={{ height: 40 }} />
       </div>
