@@ -3316,10 +3316,12 @@ export default function DWAApp() {
               <button onClick={() => { setTab("home"); setAdminSection(null); }} style={{ ...row("center", 6), color: "var(--gold)", background: "none", border: "none", cursor: "pointer", ...f(12, 700), letterSpacing: ".1em" }}>← HOME</button>
             )}
           </div>
-          <button onClick={() => setShowProfile(true)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--gold)",fontSize:22,padding:"4px 8px"}} title="My Profile">👤</button>
-          <button onClick={() => setShowSettingsPanel(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", position: "relative" }}>
-            <SectionIcon icon="gear" size={20} />
-          </button>
+          <div style={row("center", 8)}>
+            <button onClick={() => setShowProfile(true)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--gold)",fontSize:22,padding:"4px 8px"}} title="My Profile">👤</button>
+            <button onClick={() => setShowSettingsPanel(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", position: "relative" }}>
+              <SectionIcon icon="gear" size={20} />
+            </button>
+          </div>
         </div>
 
         <div className="scroll" style={{ flex: 1, position: "relative", zIndex: 1 }}>
