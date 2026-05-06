@@ -691,6 +691,7 @@ export default function DWAApp() {
   const [showWhatsNew, setShowWhatsNew] = useState(true);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [profileUserId, setProfileUserId] = useState(null);
   const [darkMode, setDarkMode] = useState(true);
   const [confirmModal, setConfirmModal] = useState(null); // { title, message, onConfirm, danger }
   const [toastMsg, setToastMsg] = useState(null); // { message, onUndo }
@@ -3317,7 +3318,7 @@ export default function DWAApp() {
             )}
           </div>
           <div style={row("center", 8)}>
-            <button onClick={() => setShowProfile(true)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--gold)",fontSize:22,padding:"4px 8px"}} title="My Profile">👤</button>
+            <button onClick={() => { setProfileUserId(null); setShowProfile(true); }} style={{background:"none",border:"none",cursor:"pointer",color:"var(--gold)",fontSize:22,padding:"4px 8px"}} title="My Profile">👤</button>
             <button onClick={() => setShowSettingsPanel(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", position: "relative" }}>
               <SectionIcon icon="gear" size={20} />
             </button>
@@ -3809,6 +3810,7 @@ export default function DWAApp() {
                     <div style={{ ...f(9, 700), color: u.role === "officer" || u.role === "super" ? "#1a0f00" : u.role === "steward" ? "var(--gold)" : "var(--text3)", background: u.role === "officer" || u.role === "super" ? "linear-gradient(135deg,#a06b18,#c9922a)" : u.role === "steward" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.05)", padding: "3px 8px", borderRadius: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>{u.role || "member"}</div>
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <button onClick={() => { setProfileUserId(u.uid); setShowProfile(true); }} style={{ padding: "7px 10px", background: "rgba(201,146,42,0.15)", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, color: "var(--gold)", ...f(10, 700), cursor: "pointer" }}>VIEW PROFILE</button>
                     <button onClick={() => { setConfirmModal({ title: `Demote ${u.name} to Member?`, message: "They will lose steward/officer privileges.", danger: true, onConfirm: async () => { await updateUserRole(u.uid, "member"); setAdminEmails(prev => prev.filter(e => e !== u.email)); setToastMsg({ message: `${u.name} demoted to Member` }); } }); }} style={{ padding: "7px 10px", background: u.role === "member" || !u.role ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.03)", border: u.role === "member" || !u.role ? "1px solid rgba(201,146,42,0.3)" : "1px solid var(--seam)", borderRadius: 6, color: u.role === "member" || !u.role ? "var(--gold)" : "var(--text3)", ...f(10, 700), cursor: "pointer" }}>MEMBER</button>
                     <button onClick={() => { setConfirmModal({ title: `Promote ${u.name} to Steward?`, message: "They will be able to approve members, update seniority, and moderate The Floor.", onConfirm: async () => { await updateUserRole(u.uid, "steward"); setToastMsg({ message: `${u.name} is now a Steward` }); } }); }} style={{ padding: "7px 10px", background: u.role === "steward" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.03)", border: u.role === "steward" ? "1px solid rgba(201,146,42,0.3)" : "1px solid var(--seam)", borderRadius: 6, color: u.role === "steward" ? "var(--gold)" : "var(--text3)", ...f(10, 700), cursor: "pointer" }}>STEWARD</button>
                     <button onClick={() => { setConfirmModal({ title: `Promote ${u.name} to Officer?`, message: "They will have full admin access.", onConfirm: async () => { await updateUserRole(u.uid, "officer"); setAdminEmails(prev => prev.includes(u.email) ? prev : [...prev, u.email]); setToastMsg({ message: `${u.name} is now an Officer` }); } }); }} style={{ padding: "7px 10px", background: u.role === "officer" || u.role === "super" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.03)", border: u.role === "officer" || u.role === "super" ? "1px solid rgba(201,146,42,0.3)" : "1px solid var(--seam)", borderRadius: 6, color: u.role === "officer" || u.role === "super" ? "var(--gold)" : "var(--text3)", ...f(10, 700), cursor: "pointer" }}>OFFICER</button>
@@ -3956,7 +3958,7 @@ export default function DWAApp() {
       <OfflineMessageOverlay />
       <SessionWarningModal />
       <FloorEditModal />
-      {showProfile && <ProfilePage onBack={() => setShowProfile(false)} />}
+      {showProfile && <ProfilePage onBack={() => { setShowProfile(false); setProfileUserId(null); }} userId={profileUserId} />}
     </>
   );
 }
