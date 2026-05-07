@@ -1,6 +1,6 @@
 import React from "react";
 
-// SVG icon component used throughout the DWA app
+// ââ SECTION ICON ââ (pure component, no context needed)
 const SectionIcon = ({ icon, size = 22 }) => {
   const icons = {
     home: <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
