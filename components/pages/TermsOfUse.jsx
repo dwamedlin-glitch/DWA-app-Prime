@@ -1,12 +1,13 @@
 import React from "react";
+import { useDWA } from "../DWAContext";
+import { f, row, col } from "../styles/styleHelpers";
 
-// Terms of Use Page
-const TermsPage = (props) => {
-  // ── TERMS OF USE PAGE ──
-  const TermsPage = () => (
+const TermsPage = () => {
+  const { setSub } = useDWA();
+  return (
     <div style={{ ...col(0), height: "100%", overflow: "hidden" }}>
       <div style={{ ...row("center", 10), padding: "16px 14px 10px", borderBottom: "1px solid var(--seam)" }}>
-        <button onClick={() => setSub(null)} style={{ background: "none", border: "none", color: "var(--gold)", cursor: "pointer", ...f(22, 400, 'bebas'), letterSpacing: ".06em" }}>← BACK</button>
+        <button onClick={() => setSub(null)} style={{ background: "none", border: "none", color: "var(--gold)", cursor: "pointer", ...f(22, 400, 'bebas'), letterSpacing: ".06em" }}>â BACK</button>
         <div style={{ ...f(20, 400, 'bebas'), color: "var(--cream)", letterSpacing: ".08em" }}>TERMS OF USE</div>
       </div>
       <div className="scroll" style={{ flex: 1, overflowY: "auto", padding: "20px 16px" }}>
