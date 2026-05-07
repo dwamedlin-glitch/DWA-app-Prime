@@ -1,8 +1,10 @@
 import React from "react";
+import { useDWA } from "../DWAContext";
 
-// Loading Skeleton Components - placeholder UI shown while data loads
-  // ── LOADING SKELETON COMPONENTS ──
-  const SkeletonCard = ({ lines = 3, avatar = false }) => (
+// ââ LOADING SKELETON COMPONENTS ââ
+const SkeletonCard = ({ lines = 3, avatar = false }) => {
+  const { card } = useDWA();
+  return (
     <div style={{ ...card({ padding: "16px 14px", marginBottom: 12 }), display: "flex", gap: 12, alignItems: "flex-start" }}>
       {avatar && <div className="skeleton-circle" style={{ width: 38, height: 38, flexShrink: 0 }} />}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -13,21 +15,22 @@ import React from "react";
       </div>
     </div>
   );
+};
 
-  const SkeletonList = ({ count = 4, avatar = false }) => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <SkeletonCard key={i} lines={i % 2 === 0 ? 3 : 2} avatar={avatar} />
-      ))}
-    </div>
-  );
+const SkeletonList = ({ count = 4, avatar = false }) => (
+  <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+    {Array.from({ length: count }).map((_, i) => (
+      <SkeletonCard key={i} lines={i % 2 === 0 ? 3 : 2} avatar={avatar} />
+    ))}
+  </div>
+);
 
-  const SkeletonGrid = ({ count = 6 }) => (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="skeleton-rect" style={{ height: 90 }} />
-      ))}
-    </div>
-  );
+const SkeletonGrid = ({ count = 6 }) => (
+  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+    {Array.from({ length: count }).map((_, i) => (
+      <div key={i} className="skeleton-rect" style={{ height: 90 }} />
+    ))}
+  </div>
+);
 
 export { SkeletonCard, SkeletonList, SkeletonGrid };
