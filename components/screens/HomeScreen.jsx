@@ -1,9 +1,26 @@
 import React from "react";
 
-// Home Screen - main dashboard tile grid
-const HomeScreen = (props) => {
-  // ── MAIN SCREENS ──
-  const Home = () => (
+export default function HomeScreen({ ctx }) {
+  const {
+    card,
+    col,
+    row,
+    f,
+    SectionIcon,
+    LOGO_B64,
+    showInstallBanner,
+    setShowInstallBanner,
+    showIOSInstallGuide,
+    setShowIOSInstallGuide,
+    handleInstallClick,
+    nextMeeting,
+    setTab,
+    setSub,
+    tileStyle,
+    tileIconStyle,
+  } = ctx;
+
+  return (
     <div className="rise">
       <div style={{ padding: "32px 20px 24px", ...col(0), alignItems: "center", borderBottom: "1px solid var(--seam)", position: "relative" }}>
         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 0%, rgba(201,146,42,0.1) 0%, transparent 60%)" }} />
@@ -105,6 +122,4 @@ const HomeScreen = (props) => {
       </div>
     </div>
   );
-};
-
-export default HomeScreen;
+}
