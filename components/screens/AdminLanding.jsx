@@ -116,7 +116,7 @@ export default function AdminLanding({ ctx }) {
           <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(45,122,79,0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--green)", flexShrink: 0 }}>
             <SectionIcon icon="check" size={16} />
           </div>
-          <div style={{ ...f(13, 400, "serif"), color: "var(--green)", fontStyle: "italic" }}>All clear — nothing needs your attention right now.</div>
+          <div style={{ ...f(13, 500), color: "var(--cream)" }}>All clear — nothing needs your attention right now.</div>
         </div>
       )}
 
