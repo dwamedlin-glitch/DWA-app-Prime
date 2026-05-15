@@ -4,6 +4,7 @@ import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply,
 import { getApp } from "firebase/app";
 import { getFirestore, doc, updateDoc } from "firebase/firestore";
 import ProfilePage from "./ProfilePage";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 import HomeScreenExt from "./screens/HomeScreen";
 import TheFloorExt from "./floor/TheFloor";
 import GrievanceExt from "./screens/Grievance";
@@ -134,6 +135,18 @@ export default function DWAApp() {
     { id: 2, title: "Special Meeting – March 2026", date: "Mar 12, 2026", summary: "Management presented proposed changes to overtime policy. Union leadership taking comments through March 20." },
   ]);
   const [notifs, setNotifs] = useState({ meetings: true, announcements: true, grievances: false });
+  const push = usePushNotifications();
+  // Notification inbox: persisted history of recent push notifications.
+  const [notifInbox, setNotifInbox] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem("dwa-notif-inbox") || "[]"); } catch { return []; }
+  });
+  const [notifInboxOpen, setNotifInboxOpen] = useState(false);
+  const [notifLastRead, setNotifLastRead] = useState(() => {
+    if (typeof window === "undefined") return 0;
+    return Number(localStorage.getItem("dwa-notif-last-read") || 0);
+  });
+  const notifUnreadCount = notifInbox.filter(n => n.time > notifLastRead).length;
   const [documents, setDocuments] = useState(DOCUMENTS_DATA);
   const [nextMeeting, setNextMeeting] = useState({ title: "Contract Ratification Vote", date: "May 15, 2026", location: "Union Hall", time: "6:00 PM" });
   const [zoomInfo, setZoomInfo] = useState({ meetingId: "783 115 6878", passcode: "9cDtkC", link: "https://zoom.us/j/7831156878" });
@@ -220,6 +233,29 @@ export default function DWAApp() {
       document.body.style.backgroundImage = "none";
     }
   }, [darkMode]);
+
+  // Capture incoming push notifications into the inbox + persist
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (e) => {
+      const detail = e.detail || {};
+      const entry = {
+        id: Date.now() + "-" + Math.random().toString(36).slice(2, 8),
+        time: Date.now(),
+        title: detail.title || "DWA Update",
+        body: detail.body || "",
+        type: detail.type || "general",
+        url: detail.url || "/",
+      };
+      setNotifInbox(prev => {
+        const next = [entry, ...prev].slice(0, 50);
+        try { localStorage.setItem("dwa-notif-inbox", JSON.stringify(next)); } catch {}
+        return next;
+      });
+    };
+    window.addEventListener("dwa-push-notification", handler);
+    return () => window.removeEventListener("dwa-push-notification", handler);
+  }, []);
 
   useEffect(() => {
     let debounceTimer = null;
@@ -980,18 +1016,39 @@ export default function DWAApp() {
             <button onClick={() => setShowSettingsPanel(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer", ...f(20, 400) }}>×</button>
           </div>
           <div style={{ ...col(0) }}>
-            {[
-              { label: "Dark Mode", desc: "Switch between dark and light themes", value: darkMode, onChange: () => setDarkMode(!darkMode) },
-              { label: "Notifications", desc: "Meeting reminders & announcements", value: notifs.announcements, onChange: () => setNotifs(n => ({ ...n, announcements: !n.announcements, meetings: !n.meetings })) },
-            ].map((item, i) => (
-              <div key={i} style={{ ...row("center", 0), justifyContent: "space-between", padding: "16px 0", borderBottom: "1px solid var(--seam)" }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ ...f(14, 600), color: "var(--text)" }}>{item.label}</div>
-                  <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginTop: 2 }}>{item.desc}</div>
-                </div>
-                <Tog on={item.value} flip={item.onChange} />
+            <div style={{ ...row("center", 0), justifyContent: "space-between", padding: "16px 0", borderBottom: "1px solid var(--seam)" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ ...f(14, 600), color: "var(--text)" }}>Dark Mode</div>
+                <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginTop: 2 }}>Switch between dark and light themes</div>
               </div>
-            ))}
+              <Tog on={darkMode} flip={() => setDarkMode(!darkMode)} />
+            </div>
+            <div style={{ ...row("center", 0), justifyContent: "space-between", padding: "16px 0", borderBottom: "1px solid var(--seam)", alignItems: "flex-start" }}>
+              <div style={{ flex: 1, paddingRight: 12 }}>
+                <div style={{ ...f(14, 600), color: "var(--text)" }}>Push Notifications</div>
+                <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginTop: 2 }}>
+                  {!push.isSupported ? "Not supported on this device" :
+                   push.permission === "denied" ? "Blocked — enable in browser settings" :
+                   push.permission === "granted" && push.token ? "On — meeting reminders & announcements" :
+                   push.isLoading ? "Working…" :
+                   "Get meeting reminders & announcements"}
+                </div>
+                {push.error && push.permission !== "denied" && (
+                  <div style={{ ...f(10, 400, 'serif'), color: "#e87a7a", marginTop: 4 }}>{push.error}</div>
+                )}
+              </div>
+              <Tog
+                on={push.permission === "granted" && !!push.token}
+                flip={async () => {
+                  if (!push.isSupported || push.isLoading || push.permission === "denied") return;
+                  if (push.permission === "granted" && push.token) {
+                    await push.disableNotifications();
+                  } else {
+                    await push.requestPermission();
+                  }
+                }}
+              />
+            </div>
             <div style={{ ...row("center", 0), justifyContent: "space-between", padding: "16px 0", borderBottom: "1px solid var(--seam)" }}>
               <div style={{ flex: 1 }}>
                 <div style={{ ...f(14, 600), color: "var(--text)" }}>Language</div>
@@ -1014,6 +1071,60 @@ export default function DWAApp() {
             <span onClick={() => { setShowSettingsPanel(false); setSub({ type: "privacy" }); }} style={{ ...f(11, 400, 'serif'), color: "var(--text3)", cursor: "pointer", textDecoration: "underline", fontStyle: "italic" }}>Privacy Policy</span>
           </div>
           <div style={{ ...f(10, 400, 'serif'), color: "var(--text3)", textAlign: "center", marginTop: 12, fontStyle: "italic", opacity: 0.6 }}>DWA App v{APP_VERSION}</div>
+        </div>
+      </div>
+    );
+  };
+
+  // ── NOTIFICATION INBOX (slide-out) ──
+  const NotifInbox2 = () => {
+    if (!notifInboxOpen) return null;
+    const typeIcons = { announcement: "📢", meeting: "📅", vote: "🗳️", grievance: "📋", general: "🔔" };
+    const fmtTime = (ts) => {
+      const diff = Date.now() - ts;
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) return "Just now";
+      if (mins < 60) return `${mins}m ago`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return `${hrs}h ago`;
+      const days = Math.floor(hrs / 24);
+      if (days < 7) return `${days}d ago`;
+      return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    };
+    const clearAll = () => {
+      setNotifInbox([]);
+      try { localStorage.removeItem("dwa-notif-inbox"); } catch {}
+    };
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 9990, display: "flex", justifyContent: "flex-end", background: "rgba(0,0,0,0.4)" }} onClick={() => setNotifInboxOpen(false)}>
+        <div style={{ width: 340, maxWidth: "92%", background: "var(--leather)", height: "100%", padding: "24px 18px", overflowY: "auto", boxShadow: "-4px 0 30px rgba(0,0,0,0.4)", borderLeft: "1px solid var(--seam)" }} onClick={e => e.stopPropagation()}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg,transparent,var(--gold),transparent)" }} />
+          <div style={{ ...row("center", 0), justifyContent: "space-between", marginBottom: 18 }}>
+            <div style={{ ...f(24, 400, 'bebas'), color: "var(--cream)", letterSpacing: ".08em" }}>NOTIFICATIONS</div>
+            <button onClick={() => setNotifInboxOpen(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer", ...f(20, 400) }}>×</button>
+          </div>
+          {notifInbox.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 12px" }}>
+              <div style={{ fontSize: 36, marginBottom: 10, opacity: 0.5 }}>🔔</div>
+              <div style={{ ...f(13, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", lineHeight: 1.6 }}>No notifications yet. We'll show updates here as they come in.</div>
+            </div>
+          ) : (
+            <>
+              <div style={{ ...col(8), marginBottom: 14 }}>
+                {notifInbox.map(n => (
+                  <div key={n.id} style={{ ...card({ padding: "12px 14px", borderLeft: `3px solid ${n.time > notifLastRead ? "var(--gold)" : "var(--seam)"}` }), display: "flex", gap: 10 }}>
+                    <span style={{ fontSize: 20, lineHeight: 1, marginTop: 2 }}>{typeIcons[n.type] || typeIcons.general}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ ...f(13, 700), color: "var(--cream)", marginBottom: 2 }}>{n.title}</div>
+                      {n.body && <div style={{ ...f(12, 400, 'serif'), color: "var(--text2)", lineHeight: 1.45, marginBottom: 4 }}>{n.body}</div>}
+                      <div style={{ ...f(10, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>{fmtTime(n.time)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={clearAll} style={{ ...btnOutline, width: "100%", padding: "10px", ...f(11, 700), letterSpacing: ".1em" }}>CLEAR ALL</button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -1907,6 +2018,23 @@ export default function DWAApp() {
             )}
           </div>
           <div style={row("center", 8)}>
+            <button
+              onClick={() => {
+                setNotifInboxOpen(true);
+                const now = Date.now();
+                setNotifLastRead(now);
+                try { localStorage.setItem("dwa-notif-last-read", String(now)); } catch {}
+              }}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", position: "relative" }}
+              title="Notifications"
+            >
+              <SectionIcon icon="bell" size={20} />
+              {notifUnreadCount > 0 && (
+                <span style={{ position: "absolute", top: -4, right: -4, background: "#e74c3c", color: "#fff", borderRadius: 9, minWidth: 16, height: 16, padding: "0 4px", display: "flex", alignItems: "center", justifyContent: "center", ...f(9, 700), border: "1px solid var(--leather)" }}>
+                  {notifUnreadCount > 9 ? "9+" : notifUnreadCount}
+                </span>
+              )}
+            </button>
             <button onClick={() => { setProfileUserId(null); setShowProfile(true); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", position: "relative" }} title="My Profile">
               <SectionIcon icon="user" size={20} />
             </button>
@@ -1936,7 +2064,7 @@ export default function DWAApp() {
           {!tabDataLoading && tab === "seniority" && <SeniorityExt ctx={{ seniority, seniorityFilter, setSeniorityFilter, card, f }} />}
           {!tabDataLoading && tab === "admin" && !adminSection && <AdminLandingExt ctx={{ card, col, f, SectionIcon, pendingMembers, setAdminSection, isSteward, isSuper, bannedUsers, tileStyle, tileIconStyle }} />}
 
-          {tab === "admin" && adminSection && <AdminSectionsExt section={adminSection} ctx={{ card, col, row, f, inp, btnGold, lbl, dropStyle, SectionIcon, Tog, isSuper, announcements, setAnnouncements, annTitle, setAnnTitle, annBody, setAnnBody, annUrgent, setAnnUrgent, annPosted, translating, setTranslating, editAnnId, setEditAnnId, postAnn, saveAnnouncements, seniority, setSeniority, editSenId, setEditSenId, newSenName, setNewSenName, newSenDate, setNewSenDate, newSenLocation, setNewSenLocation, senError, setSenError, saveSeniorityFn, pendingMembers, memberEmails, setMemberEmails, approveMember, denyMember, editMeeting, setEditMeeting, setNextMeeting, saveMeetingInfo, zoomInfo, editZoom, setEditZoom, setZoomInfo, saveZoomInfoFn, minutes, setMinutes, newMinTitle, setNewMinTitle, newMinDate, setNewMinDate, newMinSummary, setNewMinSummary, editMinId, setEditMinId, saveMinutesFn, documents, setDocuments, newDocFile, setNewDocFile, newDocName, setNewDocName, newDocCat, setNewDocCat, newDocDesc, setNewDocDesc, docUploadDrag, setDocUploadDrag, newDocUploading, setNewDocUploading, saveDocuments, uploadDocumentFile, stewardsData, setStewardsData, newContactName, setNewContactName, newContactPhone, setNewContactPhone, newContactDept, setNewContactDept, newContactTitle, setNewContactTitle, editContactId, setEditContactId, saveStewards, allApprovedUsers, userAdminSearch, setUserAdminSearch, setProfileUserId, setShowProfile, adminEmails, setAdminEmails, updateUserRole, deleteUserProfile, sendPasswordResetToUser, bannedUsers, handleUnbanUser, formatFloorTime, SUPER_ADMIN_EMAIL, newAdminEmail, setNewAdminEmail, adminMgmtError, setAdminMgmtError, newStewardName, setNewStewardName, newStewardDept, setNewStewardDept, newStewardPhone, setNewStewardPhone, adminSaved, saveFlash, setAdminSection, setConfirmModal, setToastMsg }} />}
+          {tab === "admin" && adminSection && <AdminSectionsExt section={adminSection} ctx={{ card, col, row, f, inp, btnGold, lbl, dropStyle, SectionIcon, Tog, isSuper, announcements, setAnnouncements, annTitle, setAnnTitle, annBody, setAnnBody, annUrgent, setAnnUrgent, annPosted, translating, setTranslating, editAnnId, setEditAnnId, postAnn, saveAnnouncements, seniority, setSeniority, editSenId, setEditSenId, newSenName, setNewSenName, newSenDate, setNewSenDate, newSenLocation, setNewSenLocation, senError, setSenError, saveSeniorityFn, pendingMembers, memberEmails, setMemberEmails, approveMember, denyMember, editMeeting, setEditMeeting, setNextMeeting, saveMeetingInfo, zoomInfo, editZoom, setEditZoom, setZoomInfo, saveZoomInfoFn, minutes, setMinutes, newMinTitle, setNewMinTitle, newMinDate, setNewMinDate, newMinSummary, setNewMinSummary, editMinId, setEditMinId, saveMinutesFn, documents, setDocuments, newDocFile, setNewDocFile, newDocName, setNewDocName, newDocCat, setNewDocCat, newDocDesc, setNewDocDesc, docUploadDrag, setDocUploadDrag, newDocUploading, setNewDocUploading, saveDocuments, uploadDocumentFile, stewardsData, setStewardsData, newContactName, setNewContactName, newContactPhone, setNewContactPhone, newContactDept, setNewContactDept, newContactTitle, setNewContactTitle, editContactId, setEditContactId, saveStewards, allApprovedUsers, userAdminSearch, setUserAdminSearch, setProfileUserId, setShowProfile, adminEmails, setAdminEmails, updateUserRole, deleteUserProfile, sendPasswordResetToUser, bannedUsers, handleUnbanUser, formatFloorTime, SUPER_ADMIN_EMAIL, newAdminEmail, setNewAdminEmail, adminMgmtError, setAdminMgmtError, newStewardName, setNewStewardName, newStewardDept, setNewStewardDept, newStewardPhone, setNewStewardPhone, adminSaved, saveFlash, setAdminSection, setConfirmModal, setToastMsg, pushToken: push.token }} />}
         </div>
 
         {/* Bottom tab bar */}
@@ -1963,6 +2091,7 @@ export default function DWAApp() {
       </div>
       <WhatsNewPopup />
       <SettingsPanel2 />
+      <NotifInbox2 />
       <ConfirmModal2 />
       <Toast2 />
       <OfflineBanner />

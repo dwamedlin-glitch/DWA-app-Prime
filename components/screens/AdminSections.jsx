@@ -700,5 +700,146 @@ export default function AdminSections({ section, ctx }) {
     );
   }
 
+  if (section === "broadcast") {
+    return <BroadcastPanel ctx={ctx} />;
+  }
+
   return null;
+}
+
+function BroadcastPanel({ ctx }) {
+  const {
+    card, col, row, f, inp, btnGold, lbl,
+    SectionIcon,
+    setToastMsg,
+    setAdminSection,
+  } = ctx;
+  const pushToken = ctx.pushToken || null;
+
+  const [title, setTitle] = React.useState("");
+  const [body, setBody] = React.useState("");
+  const [type, setType] = React.useState("announcement");
+  const [url, setUrl] = React.useState("/");
+  const [sending, setSending] = React.useState(false);
+  const [lastResult, setLastResult] = React.useState(null);
+
+  const types = [
+    { v: "announcement", label: "Announcement", icon: "📢" },
+    { v: "meeting", label: "Meeting", icon: "📅" },
+    { v: "vote", label: "Vote", icon: "🗳️" },
+    { v: "grievance", label: "Grievance", icon: "📋" },
+    { v: "general", label: "General", icon: "🔔" },
+  ];
+
+  const send = async (testOnly) => {
+    if (!title.trim() || !body.trim()) {
+      setToastMsg({ message: "Title and body required." });
+      return;
+    }
+    if (testOnly && !pushToken) {
+      setToastMsg({ message: "Enable notifications in Settings first to test." });
+      return;
+    }
+    setSending(true);
+    setLastResult(null);
+    try {
+      const payload = { title: title.trim(), body: body.trim(), type, url: url.trim() || "/" };
+      if (testOnly) payload.tokens = [pushToken];
+      const res = await fetch("/api/notifications/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      setLastResult(data);
+      if (data.success) {
+        setToastMsg({ message: testOnly ? "Test sent to your device" : `Sent to ${data.sent} device${data.sent === 1 ? "" : "s"}` });
+        if (!testOnly) { setTitle(""); setBody(""); }
+      } else {
+        setToastMsg({ message: data.message || data.error || "Failed to send" });
+      }
+    } catch (e) {
+      console.error("Broadcast failed:", e);
+      setToastMsg({ message: "Failed to send. Try again." });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ ...row("center", 0), justifyContent: "space-between" }}>
+        <div style={{ ...f(11, 700), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".15em" }}>Send Notification</div>
+        <button onClick={() => setAdminSection(null)} style={{ ...f(11, 700), color: "var(--gold)", background: "none", border: "none", cursor: "pointer", letterSpacing: ".1em" }}>← BACK</button>
+      </div>
+
+      <div style={{ ...card({ padding: "16px" }), ...col(12) }}>
+        <div style={col(5)}>
+          <div style={lbl}>TITLE</div>
+          <input style={inp()} value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Meeting tonight at 7pm" maxLength={60} />
+          <div style={{ ...f(10, 400, 'serif'), color: "var(--text3)", textAlign: "right", fontStyle: "italic" }}>{title.length}/60</div>
+        </div>
+        <div style={col(5)}>
+          <div style={lbl}>MESSAGE</div>
+          <textarea style={{ ...inp(), minHeight: 70, resize: "vertical", lineHeight: 1.5 }} value={body} onChange={e => setBody(e.target.value)} placeholder="What do you want to tell members?" maxLength={200} />
+          <div style={{ ...f(10, 400, 'serif'), color: "var(--text3)", textAlign: "right", fontStyle: "italic" }}>{body.length}/200</div>
+        </div>
+        <div style={col(5)}>
+          <div style={lbl}>TYPE</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6 }}>
+            {types.map(t => (
+              <div key={t.v} onClick={() => setType(t.v)} style={{ padding: "10px 4px", textAlign: "center", borderRadius: 8, border: type === t.v ? "1.5px solid var(--gold)" : "1px solid var(--seam)", background: type === t.v ? "rgba(201,146,42,0.12)" : "transparent", cursor: "pointer" }}>
+                <div style={{ fontSize: 20, lineHeight: 1 }}>{t.icon}</div>
+                <div style={{ ...f(9, 600), color: type === t.v ? "var(--gold)" : "var(--text3)", marginTop: 4 }}>{t.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={col(5)}>
+          <div style={lbl}>OPEN URL (optional)</div>
+          <input style={inp()} value={url} onChange={e => setUrl(e.target.value)} placeholder="/ (homepage)" />
+          <div style={{ ...f(10, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>Where to send users when they tap the notification.</div>
+        </div>
+      </div>
+
+      <div style={{ ...card({ padding: "14px 16px", borderLeft: "3px solid var(--gold)" }) }}>
+        <div style={{ ...f(11, 700), color: "var(--gold)", letterSpacing: ".08em", marginBottom: 8 }}>PREVIEW</div>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <span style={{ fontSize: 22, lineHeight: 1 }}>{types.find(t => t.v === type)?.icon}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ ...f(13, 700), color: "var(--cream)", marginBottom: 2 }}>{title || "(title)"}</div>
+            <div style={{ ...f(12, 400, 'serif'), color: "var(--text2)", lineHeight: 1.45 }}>{body || "(message)"}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <button
+          onClick={() => send(true)}
+          disabled={sending}
+          style={{ padding: "12px", border: "1px solid var(--seam)", borderRadius: 8, background: "transparent", color: "var(--cream)", ...f(12, 700, 'bebas'), letterSpacing: ".1em", cursor: sending ? "not-allowed" : "pointer", opacity: sending ? 0.5 : 1 }}
+        >
+          {sending ? "…" : "SEND TEST TO ME"}
+        </button>
+        <button
+          onClick={() => send(false)}
+          disabled={sending}
+          style={{ ...btnGold(), padding: "12px", ...f(12, 700, 'bebas'), letterSpacing: ".1em", opacity: sending ? 0.5 : 1, cursor: sending ? "not-allowed" : "pointer" }}
+        >
+          {sending ? "SENDING…" : "SEND TO EVERYONE"}
+        </button>
+      </div>
+
+      {lastResult && lastResult.success && (
+        <div style={{ ...card({ padding: "12px 14px", borderLeft: "3px solid var(--green)" }) }}>
+          <div style={{ ...f(11, 700), color: "var(--green)", letterSpacing: ".08em", marginBottom: 4 }}>LAST SEND</div>
+          <div style={{ ...f(12, 400, 'serif'), color: "var(--text2)" }}>
+            Delivered to {lastResult.sent} of {lastResult.totalDevices} device{lastResult.totalDevices === 1 ? "" : "s"}
+            {lastResult.failed > 0 && ` · ${lastResult.failed} failed`}
+            {lastResult.staleRemoved > 0 && ` · ${lastResult.staleRemoved} stale token${lastResult.staleRemoved === 1 ? "" : "s"} cleaned up`}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

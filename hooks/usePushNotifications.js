@@ -1,6 +1,6 @@
 // hooks/usePushNotifications.js
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { getMessaging, getToken, onMessage, deleteToken } from "firebase/messaging";
 import { initializeApp, getApps } from "firebase/app";
 
 const firebaseConfig = {
@@ -71,5 +71,33 @@ export function usePushNotifications() {
     } catch (err) { setError(err.message); setIsLoading(false); return false; }
   }, [isSupported, fetchToken]);
 
-  return { isSupported, permission, token, isLoading, error, requestPermission, fetchToken };
+  // Disable notifications: delete the FCM token both client-side and server-side.
+  // Note: this does NOT revoke browser permission — only the user can do that in browser settings.
+  // We just stop receiving pushes by removing the token registration.
+  const disableNotifications = useCallback(async () => {
+    if (!messaging) return false;
+    setIsLoading(true); setError(null);
+    try {
+      const currentToken = token;
+      // Tear down foreground listener
+      if (unsubRef.current) { unsubRef.current(); unsubRef.current = null; }
+      // Delete the token at the client (revokes for this device)
+      try { await deleteToken(messaging); } catch (e) { /* token may already be gone */ }
+      // Remove from server so future sends skip this device
+      if (currentToken) {
+        try {
+          await fetch("/api/notifications/unregister", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: currentToken }),
+          });
+        } catch (e) { /* offline is OK — token still gone client-side */ }
+      }
+      setToken(null);
+      setIsLoading(false);
+      return true;
+    } catch (err) { setError(err.message); setIsLoading(false); return false; }
+  }, [token]);
+
+  return { isSupported, permission, token, isLoading, error, requestPermission, fetchToken, disableNotifications };
 }

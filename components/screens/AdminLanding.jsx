@@ -156,6 +156,7 @@ export default function AdminLanding({ ctx }) {
             { icon: "phone", label: "DWA Contacts", action: () => setAdminSection("contacts") },
             { icon: "users", label: "Member Requests", action: () => setAdminSection("members") },
             { icon: "shield", label: "User Admin", action: () => setAdminSection("useradmin") },
+            { icon: "bell", label: "Send Notification", action: () => setAdminSection("broadcast") },
             ...(bannedUsers.length > 0 ? [{ icon: "x", label: `Banned (${bannedUsers.length})`, action: () => setAdminSection("banned") }] : []),
             ...(isSuper ? [{ icon: "shield", label: "Manage Officials", action: () => setAdminSection("accounts") }] : []),
           ].map(qa => (
