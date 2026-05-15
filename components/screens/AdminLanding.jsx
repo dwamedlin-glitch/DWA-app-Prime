@@ -16,7 +16,7 @@ export default function AdminLanding({ ctx }) {
   } = ctx;
 
   const needsAttention = [];
-  if (pendingMembers.length > 0) needsAttention.push({ icon: "users", title: `${pendingMembers.length} member request${pendingMembers.length > 1 ? "s" : ""} waiting`, sub: "Tap to approve or deny", action: () => setAdminSection("members"), color: "#c0392b", bg: "rgba(192,57,43,0.08)", border: "rgba(192,57,43,0.2)" });
+  if (pendingMembers.length > 0) needsAttention.push({ icon: "users", title: `${pendingMembers.length} member request${pendingMembers.length > 1 ? "s" : ""} waiting`, sub: "Tap to approve or deny", action: () => setAdminSection("useradmin"), color: "#c0392b", bg: "rgba(192,57,43,0.08)", border: "rgba(192,57,43,0.2)" });
 
   // ── STEWARD LIMITED VIEW ──
   if (isSteward) {
@@ -59,7 +59,7 @@ export default function AdminLanding({ ctx }) {
           <div style={{ ...f(9, 700), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".15em" }}>Steward Actions</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {[
-              { icon: "users", label: "Member Requests", action: () => setAdminSection("members") },
+              { icon: "shield", label: "User Admin", action: () => setAdminSection("useradmin") },
               { icon: "shield", label: "Update Seniority", action: () => setAdminSection("seniority") },
               ...(bannedUsers.length > 0 ? [{ icon: "x", label: `Banned (${bannedUsers.length})`, action: () => setAdminSection("banned") }] : []),
             ].map(qa => (
@@ -154,11 +154,9 @@ export default function AdminLanding({ ctx }) {
             { icon: "calendar", label: "Union Meeting", action: () => setAdminSection("meeting") },
             { icon: "video", label: "Zoom Room", action: () => setAdminSection("zoom") },
             { icon: "phone", label: "DWA Contacts", action: () => setAdminSection("contacts") },
-            { icon: "users", label: "Member Requests", action: () => setAdminSection("members") },
-            { icon: "shield", label: "User Admin", action: () => setAdminSection("useradmin") },
+            { icon: "users", label: pendingMembers.length > 0 ? `User Admin (${pendingMembers.length})` : "User Admin", action: () => setAdminSection("useradmin") },
             { icon: "bell", label: "Send Notification", action: () => setAdminSection("broadcast") },
             ...(bannedUsers.length > 0 ? [{ icon: "x", label: `Banned (${bannedUsers.length})`, action: () => setAdminSection("banned") }] : []),
-            ...(isSuper ? [{ icon: "shield", label: "Manage Officials", action: () => setAdminSection("accounts") }] : []),
           ].map(qa => (
             <div key={qa.label} onClick={qa.action} className="tile" style={{
               ...tileStyle(),

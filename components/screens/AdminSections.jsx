@@ -188,39 +188,6 @@ export default function AdminSections({ section, ctx }) {
     );
   }
 
-  if (section === "members") {
-    return (
-      <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
-        <AdminFormHeader title="Member Requests" />
-        <div style={{ ...card({ padding: "16px" }) }}>
-          <div style={{ ...f(12, 700), color: "var(--gold)", marginBottom: 10 }}>Pending ({pendingMembers.length})</div>
-          {pendingMembers.length === 0 && <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>No pending requests.</div>}
-          {pendingMembers.map(m => (
-            <div key={m.uid || m.email} style={{ ...col(6), padding: "10px 0", borderBottom: "1px solid var(--seam)" }}>
-              <div style={{ ...f(14, 600), color: "var(--text)" }}>{m.name}</div>
-              <div style={{ ...f(12, 400), color: "var(--text3)" }}>{m.email}{m.location ? ` · ${m.location}` : ""}</div>
-              <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>Submitted {m.submittedAt}</div>
-              <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                <button onClick={() => { setConfirmModal({ title: `Approve ${m.name}?`, message: `${m.name} will become a union member.`, onConfirm: async () => { if (m.uid) await approveMember(m.uid); setMemberEmails(prev => [...prev, m.email]); setToastMsg({ message: `${m.name} approved!` }); } }); }} style={{ flex: 1, padding: "8px", background: "rgba(45,122,79,0.15)", border: "1px solid var(--green)", borderRadius: 6, color: "var(--green)", ...f(11, 700), cursor: "pointer" }}>APPROVE</button>
-                <button onClick={() => { setConfirmModal({ title: `Deny ${m.name}?`, message: "This will reject their membership request.", danger: true, onConfirm: async () => { if (m.uid) await denyMember(m.uid); setToastMsg({ message: `${m.name} denied` }); } }); }} style={{ flex: 1, padding: "8px", background: "rgba(192,57,43,0.1)", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, color: "var(--red)", ...f(11, 700), cursor: "pointer" }}>DENY</button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div style={{ ...card({ padding: "16px" }) }}>
-          <div style={{ ...f(12, 700), color: "var(--gold)", marginBottom: 10 }}>Approved Members ({memberEmails.length})</div>
-          {memberEmails.length === 0 && <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>No approved members yet.</div>}
-          {memberEmails.map(em => (
-            <div key={em} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--seam)" }}>
-              <div style={{ flex: 1, ...f(13, 400), color: "var(--text)" }}>{em}</div>
-              <button onClick={() => { setConfirmModal({ title: `Remove ${em}?`, message: "This member will lose access to the app.", danger: true, onConfirm: () => { const removed = em; setMemberEmails(prev => prev.filter(e => e !== em)); setToastMsg({ message: `${em} removed`, onUndo: () => { setMemberEmails(prev => [...prev, removed]); } }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>DEL</button>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   if (section === "meeting") {
     return (
       <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
@@ -558,38 +525,7 @@ export default function AdminSections({ section, ctx }) {
   }
 
   if (section === "useradmin") {
-    return (
-      <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
-        <AdminFormHeader title="User Admin" />
-        <div style={{ ...card({ padding: "16px" }), ...col(12) }}>
-          <div style={{ ...f(12, 700), color: "var(--gold)", letterSpacing: ".1em", marginBottom: 8 }}>All Members ({allApprovedUsers.length})</div>
-          <input style={inp()} value={userAdminSearch} onChange={e => setUserAdminSearch(e.target.value)} placeholder="Search by name or email..." />
-        </div>
-        {allApprovedUsers.filter(u => { const q = userAdminSearch.toLowerCase(); return !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q); }).map(u => (
-          <div key={u.uid} style={{ ...card({ padding: "14px" }), ...col(12) }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#2a1f0a", border: "1px solid #6b5a2e", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <span style={{ ...f(12, 600), color: "#c4a44e" }}>{(u.name || "?").split(" ").map(n => n[0]).join("").slice(0, 2)}</span>
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ ...f(14, 600), color: "var(--text)" }}>{u.name || "Unknown"}</div>
-                <div style={{ ...f(11, 400), color: "var(--text3)" }}>{u.email || "No email"}{u.phone ? ` · ${u.phone}` : ""}{u.location ? ` · ${u.location}` : ""}</div>
-              </div>
-              <div style={{ ...f(9, 700), color: u.role === "officer" || u.role === "super" ? "#1a0f00" : u.role === "steward" ? "var(--gold)" : "var(--text3)", background: u.role === "officer" || u.role === "super" ? "linear-gradient(135deg,#a06b18,#c9922a)" : u.role === "steward" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.05)", padding: "3px 8px", borderRadius: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>{u.role || "member"}</div>
-            </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <button onClick={() => { setProfileUserId(u.uid); setShowProfile(true); }} style={{ padding: "7px 10px", background: "rgba(201,146,42,0.15)", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, color: "var(--gold)", ...f(10, 700), cursor: "pointer" }}>VIEW PROFILE</button>
-              <button onClick={() => { setConfirmModal({ title: `Demote ${u.name} to Member?`, message: "They will lose steward/officer privileges.", danger: true, onConfirm: async () => { await updateUserRole(u.uid, "member"); setAdminEmails(prev => prev.filter(e => e !== u.email)); setToastMsg({ message: `${u.name} demoted to Member` }); } }); }} style={{ padding: "7px 10px", background: u.role === "member" || !u.role ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.03)", border: u.role === "member" || !u.role ? "1px solid rgba(201,146,42,0.3)" : "1px solid var(--seam)", borderRadius: 6, color: u.role === "member" || !u.role ? "var(--gold)" : "var(--text3)", ...f(10, 700), cursor: "pointer" }}>MEMBER</button>
-              <button onClick={() => { setConfirmModal({ title: `Promote ${u.name} to Steward?`, message: "They will be able to approve members, update seniority, and moderate The Floor.", onConfirm: async () => { await updateUserRole(u.uid, "steward"); setToastMsg({ message: `${u.name} is now a Steward` }); } }); }} style={{ padding: "7px 10px", background: u.role === "steward" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.03)", border: u.role === "steward" ? "1px solid rgba(201,146,42,0.3)" : "1px solid var(--seam)", borderRadius: 6, color: u.role === "steward" ? "var(--gold)" : "var(--text3)", ...f(10, 700), cursor: "pointer" }}>STEWARD</button>
-              <button onClick={() => { setConfirmModal({ title: `Promote ${u.name} to Officer?`, message: "They will have full admin access.", onConfirm: async () => { await updateUserRole(u.uid, "officer"); setAdminEmails(prev => prev.includes(u.email) ? prev : [...prev, u.email]); setToastMsg({ message: `${u.name} is now an Officer` }); } }); }} style={{ padding: "7px 10px", background: u.role === "officer" || u.role === "super" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.03)", border: u.role === "officer" || u.role === "super" ? "1px solid rgba(201,146,42,0.3)" : "1px solid var(--seam)", borderRadius: 6, color: u.role === "officer" || u.role === "super" ? "var(--gold)" : "var(--text3)", ...f(10, 700), cursor: "pointer" }}>OFFICER</button>
-              <button onClick={() => { setConfirmModal({ title: `Reset password for ${u.name}?`, message: `A reset link will be sent to ${u.email}.`, onConfirm: async () => { try { await sendPasswordResetToUser(u.email); setToastMsg({ message: `Reset email sent to ${u.email}` }); } catch(e) { setToastMsg({ message: "Error: " + e.message }); } } }); }} style={{ padding: "7px 10px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--seam)", borderRadius: 6, color: "var(--text2)", ...f(10, 700), cursor: "pointer" }}>RESET PW</button>
-              <button onClick={() => { setConfirmModal({ title: `Delete ${u.name}'s account?`, message: "This will remove their profile from the app. This cannot be undone.", danger: true, onConfirm: async () => { try { await deleteUserProfile(u.uid); setToastMsg({ message: `${u.name}'s profile deleted` }); } catch(e) { setToastMsg({ message: "Error: " + e.message }); } } }); }} style={{ padding: "7px 10px", background: "rgba(192,57,43,0.1)", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, color: "var(--red)", ...f(10, 700), cursor: "pointer" }}>DELETE</button>
-            </div>
-          </div>
-        ))}
-        {allApprovedUsers.length === 0 && <div style={{ ...card({ padding: "16px" }), ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>No approved members yet.</div>}
-      </div>
-    );
+    return <UserAdminPanel ctx={ctx} />;
   }
 
   if (section === "banned") {
@@ -609,90 +545,6 @@ export default function AdminSections({ section, ctx }) {
                 <div style={{ ...f(10, 400, "serif"), color: "var(--text3)", fontStyle: "italic" }}>Banned by {b.bannedBy || "—"} · {formatFloorTime(b.bannedAt)}</div>
               </div>
               <button onClick={() => handleUnbanUser(b.name)} style={{ ...f(11, 700, 'bebas'), color: "var(--green)", background: "rgba(45,122,79,0.1)", border: "1px solid var(--green)", borderRadius: 6, padding: "5px 10px", cursor: "pointer", letterSpacing: ".08em" }}>UNBAN</button>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (section === "accounts") {
-    if (!isSuper) return null;
-    return (
-      <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
-        <AdminFormHeader title="Manage Officials" />
-
-        {/* Officers */}
-        <div style={{ ...card({ padding: "16px" }), ...col(12) }}>
-          <div style={{ ...f(12, 700), color: "var(--gold)", letterSpacing: ".1em", marginBottom: 4 }}>Add Officer by Email</div>
-          <div style={col(5)}><input style={inp()} value={newAdminEmail} onChange={e => setNewAdminEmail(e.target.value)} placeholder="official@dwa.org" /></div>
-          {adminMgmtError && <div style={{ ...f(12, 400, 'serif'), color: "var(--red)", fontStyle: "italic" }}>{adminMgmtError}</div>}
-          {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>✓ Saved!</div>}
-          <button style={btnGold(!newAdminEmail.trim())} disabled={!newAdminEmail.trim()} onClick={() => {
-            const e = newAdminEmail.toLowerCase().trim();
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) { setAdminMgmtError("Invalid email."); return; }
-            if (e === SUPER_ADMIN_EMAIL) { setAdminMgmtError("That's the super admin."); return; }
-            if (adminEmails.map(a => a.toLowerCase()).includes(e)) { setAdminMgmtError("Already an official."); return; }
-            setAdminEmails(prev => [...prev, e]); setNewAdminEmail(""); setAdminMgmtError(""); saveFlash(() => { });
-          }}>PROMOTE TO OFFICER</button>
-        </div>
-        <div style={{ ...card({ padding: "16px" }), ...col(8) }}>
-          <div style={{ ...f(12, 700), color: "var(--gold)", marginBottom: 8 }}>Current Officers</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--seam)" }}>
-            <div style={{ flex: 1, ...f(13, 400), color: "var(--text)" }}>{SUPER_ADMIN_EMAIL}</div>
-            <div style={{ ...f(9, 700), color: "#1a0f00", background: "linear-gradient(135deg,#a06b18,#c9922a)", padding: "3px 8px", borderRadius: 6 }}>SUPER</div>
-          </div>
-          {adminEmails.map(em => (
-            <div key={em} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--seam)" }}>
-              <div style={{ flex: 1, ...f(13, 400), color: "var(--text)" }}>{em}</div>
-              <div style={{ ...f(9, 700), color: "var(--gold)", background: "rgba(201,146,42,0.1)", padding: "3px 8px", borderRadius: 6 }}>OFFICER</div>
-              <button onClick={() => { setConfirmModal({ title: `Demote ${em}?`, message: "They will no longer have officer privileges.", danger: true, onConfirm: () => { setAdminEmails(prev => prev.filter(a => a !== em)); setToastMsg({ message: `${em} demoted from officer` }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>DEMOTE</button>
-            </div>
-          ))}
-        </div>
-
-        {/* Stewards */}
-        <div className="gold-rule" style={{ margin: "4px 0" }} />
-        <div style={{ ...card({ padding: "16px" }), ...col(12) }}>
-          <div style={{ ...f(12, 700), color: "var(--gold)", letterSpacing: ".1em", marginBottom: 4 }}>Promote to Steward</div>
-          <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginBottom: 4 }}>Stewards can approve new members and moderate The Floor.</div>
-          <div style={col(5)}>
-            <label style={lbl}>Full Name</label>
-            <input style={inp()} value={newStewardName} onChange={e => setNewStewardName(e.target.value)} placeholder="Member's full name" />
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div style={col(5)}>
-              <label style={lbl}>Location</label>
-              <select style={dropStyle()} value={newStewardDept} onChange={e => setNewStewardDept(e.target.value)}>
-                <option>Jersey City</option>
-                <option>Florence</option>
-              </select>
-            </div>
-            <div style={col(5)}>
-              <label style={lbl}>Phone (optional)</label>
-              <input style={inp()} type="tel" value={newStewardPhone} onChange={e => setNewStewardPhone(e.target.value)} placeholder="Phone number" />
-            </div>
-          </div>
-          <button style={btnGold(!newStewardName.trim())} disabled={!newStewardName.trim()} onClick={() => {
-            setStewardsData(prev => { const updated = [...prev, { id: Date.now(), name: newStewardName.trim(), title: "Shop Steward", dept: newStewardDept, phone: newStewardPhone.replace(/\D/g, "") }]; saveStewards(updated); return updated; });
-            setNewStewardName(""); setNewStewardPhone(""); setNewStewardDept("Jersey City");
-            saveFlash(() => {});
-          }}>PROMOTE TO STEWARD</button>
-        </div>
-        <div style={{ ...card({ padding: "16px" }), ...col(8) }}>
-          <div style={{ ...f(12, 700), color: "var(--gold)", marginBottom: 8 }}>Current Stewards ({stewardsData.length})</div>
-          {stewardsData.length === 0 && <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>No stewards assigned.</div>}
-          {stewardsData.map(s => (
-            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--seam)" }}>
-              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#2a1f0a", border: "1px solid #6b5a2e", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <span style={{ ...f(10, 600), color: "#c4a44e" }}>{s.name.split(" ").map(n => n[0]).join("").slice(0, 2)}</span>
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ ...f(13, 600), color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
-                <div style={{ ...f(10, 400, "serif"), color: "var(--text3)", fontStyle: "italic" }}>{s.dept || "—"}{s.phone ? ` · ${s.phone}` : ""}</div>
-              </div>
-              <div style={{ ...f(9, 700), color: "#e8b84b", background: "#2a1f0a", padding: "3px 8px", borderRadius: 6 }}>STEWARD</div>
-              <button onClick={() => { setConfirmModal({ title: `Demote ${s.name}?`, message: `${s.name} will lose steward privileges. They'll become a regular member.`, danger: true, onConfirm: () => { const removed = s; setStewardsData(prev => { const updated = prev.filter(x => x.id !== s.id); saveStewards(updated); return updated; }); setToastMsg({ message: `${s.name} demoted to member`, onUndo: () => { setStewardsData(prev => { const restored = [...prev, removed]; saveStewards(restored); return restored; }); } }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer", flexShrink: 0 }}>DEMOTE</button>
             </div>
           ))}
         </div>
@@ -839,6 +691,198 @@ function BroadcastPanel({ ctx }) {
             {lastResult.staleRemoved > 0 && ` · ${lastResult.staleRemoved} stale token${lastResult.staleRemoved === 1 ? "" : "s"} cleaned up`}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function UserAdminPanel({ ctx }) {
+  const {
+    card, col, row, f, inp, btnGold, lbl, dropStyle,
+    isSuper, SUPER_ADMIN_EMAIL,
+    // members tab
+    allApprovedUsers, userAdminSearch, setUserAdminSearch,
+    setProfileUserId, setShowProfile,
+    updateUserRole, deleteUserProfile, sendPasswordResetToUser,
+    adminEmails, setAdminEmails,
+    // requests tab
+    pendingMembers, memberEmails, setMemberEmails,
+    approveMember, denyMember,
+    // officials tab
+    newAdminEmail, setNewAdminEmail, adminMgmtError, setAdminMgmtError,
+    newStewardName, setNewStewardName,
+    newStewardDept, setNewStewardDept,
+    newStewardPhone, setNewStewardPhone,
+    stewardsData, setStewardsData, saveStewards,
+    adminSaved, saveFlash,
+    // shared
+    setConfirmModal, setToastMsg,
+  } = ctx;
+
+  const [tab, setTab] = React.useState(pendingMembers && pendingMembers.length > 0 ? "requests" : "members");
+
+  const tabs = [
+    { id: "members", label: "MEMBERS", count: allApprovedUsers.length },
+    { id: "requests", label: "REQUESTS", count: pendingMembers.length, alert: pendingMembers.length > 0 },
+    ...(isSuper ? [{ id: "officials", label: "OFFICIALS", count: adminEmails.length + stewardsData.length }] : []),
+  ];
+
+  return (
+    <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
+      <AdminFormHeader title="User Admin" />
+
+      {/* Tab nav */}
+      <div style={{ display: "flex", borderBottom: "1px solid var(--seam)" }}>
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            style={{
+              flex: 1, padding: "12px 8px", background: "none",
+              border: "none", borderBottom: tab === t.id ? "2px solid var(--gold)" : "2px solid transparent",
+              color: tab === t.id ? "var(--gold)" : "var(--text3)",
+              ...f(11, 700), letterSpacing: ".08em", cursor: "pointer", position: "relative",
+            }}
+          >
+            {t.label} <span style={{ opacity: 0.6 }}>({t.count})</span>
+            {t.alert && (
+              <span style={{ position: "absolute", top: 6, right: 6, width: 8, height: 8, borderRadius: "50%", background: "#e74c3c" }} />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* MEMBERS TAB */}
+      {tab === "members" && (
+        <>
+          <div style={{ ...card({ padding: "14px" }) }}>
+            <input style={inp()} value={userAdminSearch} onChange={e => setUserAdminSearch(e.target.value)} placeholder="Search by name or email..." />
+          </div>
+          {allApprovedUsers.filter(u => { const q = userAdminSearch.toLowerCase(); return !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q); }).map(u => (
+            <div key={u.uid} style={{ ...card({ padding: "14px" }), ...col(12) }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+                <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#2a1f0a", border: "1px solid #6b5a2e", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ ...f(12, 600), color: "#c4a44e" }}>{(u.name || "?").split(" ").map(n => n[0]).join("").slice(0, 2)}</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ ...f(14, 600), color: "var(--text)" }}>{u.name || "Unknown"}</div>
+                  <div style={{ ...f(11, 400), color: "var(--text3)" }}>{u.email || "No email"}{u.phone ? ` · ${u.phone}` : ""}{u.location ? ` · ${u.location}` : ""}</div>
+                </div>
+                <div style={{ ...f(9, 700), color: u.role === "officer" || u.role === "super" ? "#1a0f00" : u.role === "steward" ? "var(--gold)" : "var(--text3)", background: u.role === "officer" || u.role === "super" ? "linear-gradient(135deg,#a06b18,#c9922a)" : u.role === "steward" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.05)", padding: "3px 8px", borderRadius: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>{u.role || "member"}</div>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <button onClick={() => { setProfileUserId(u.uid); setShowProfile(true); }} style={{ padding: "7px 10px", background: "rgba(201,146,42,0.15)", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, color: "var(--gold)", ...f(10, 700), cursor: "pointer" }}>VIEW PROFILE</button>
+                <button onClick={() => { setConfirmModal({ title: `Demote ${u.name} to Member?`, message: "They will lose steward/officer privileges.", danger: true, onConfirm: async () => { await updateUserRole(u.uid, "member"); setAdminEmails(prev => prev.filter(e => e !== u.email)); setToastMsg({ message: `${u.name} demoted to Member` }); } }); }} style={{ padding: "7px 10px", background: u.role === "member" || !u.role ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.03)", border: u.role === "member" || !u.role ? "1px solid rgba(201,146,42,0.3)" : "1px solid var(--seam)", borderRadius: 6, color: u.role === "member" || !u.role ? "var(--gold)" : "var(--text3)", ...f(10, 700), cursor: "pointer" }}>MEMBER</button>
+                <button onClick={() => { setConfirmModal({ title: `Promote ${u.name} to Steward?`, message: "They will be able to approve members, update seniority, and moderate The Floor.", onConfirm: async () => { await updateUserRole(u.uid, "steward"); setToastMsg({ message: `${u.name} is now a Steward` }); } }); }} style={{ padding: "7px 10px", background: u.role === "steward" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.03)", border: u.role === "steward" ? "1px solid rgba(201,146,42,0.3)" : "1px solid var(--seam)", borderRadius: 6, color: u.role === "steward" ? "var(--gold)" : "var(--text3)", ...f(10, 700), cursor: "pointer" }}>STEWARD</button>
+                <button onClick={() => { setConfirmModal({ title: `Promote ${u.name} to Officer?`, message: "They will have full admin access.", onConfirm: async () => { await updateUserRole(u.uid, "officer"); setAdminEmails(prev => prev.includes(u.email) ? prev : [...prev, u.email]); setToastMsg({ message: `${u.name} is now an Officer` }); } }); }} style={{ padding: "7px 10px", background: u.role === "officer" || u.role === "super" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.03)", border: u.role === "officer" || u.role === "super" ? "1px solid rgba(201,146,42,0.3)" : "1px solid var(--seam)", borderRadius: 6, color: u.role === "officer" || u.role === "super" ? "var(--gold)" : "var(--text3)", ...f(10, 700), cursor: "pointer" }}>OFFICER</button>
+                <button onClick={() => { setConfirmModal({ title: `Reset password for ${u.name}?`, message: `A reset link will be sent to ${u.email}.`, onConfirm: async () => { try { await sendPasswordResetToUser(u.email); setToastMsg({ message: `Reset email sent to ${u.email}` }); } catch(e) { setToastMsg({ message: "Error: " + e.message }); } } }); }} style={{ padding: "7px 10px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--seam)", borderRadius: 6, color: "var(--text2)", ...f(10, 700), cursor: "pointer" }}>RESET PW</button>
+                <button onClick={() => { setConfirmModal({ title: `Delete ${u.name}'s account?`, message: "This will remove their profile from the app. This cannot be undone.", danger: true, onConfirm: async () => { try { await deleteUserProfile(u.uid); setToastMsg({ message: `${u.name}'s profile deleted` }); } catch(e) { setToastMsg({ message: "Error: " + e.message }); } } }); }} style={{ padding: "7px 10px", background: "rgba(192,57,43,0.1)", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, color: "var(--red)", ...f(10, 700), cursor: "pointer" }}>DELETE</button>
+              </div>
+            </div>
+          ))}
+          {allApprovedUsers.length === 0 && <div style={{ ...card({ padding: "16px" }), ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>No approved members yet.</div>}
+        </>
+      )}
+
+      {/* REQUESTS TAB */}
+      {tab === "requests" && (
+        <>
+          <div style={{ ...card({ padding: "16px" }) }}>
+            <div style={{ ...f(12, 700), color: "var(--gold)", marginBottom: 10 }}>Pending ({pendingMembers.length})</div>
+            {pendingMembers.length === 0 && <div style={{ ...f(13, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", textAlign: "center", padding: "20px 0" }}>No pending requests. New signups will appear here.</div>}
+            {pendingMembers.map(m => (
+              <div key={m.uid || m.email} style={{ ...col(6), padding: "10px 0", borderBottom: "1px solid var(--seam)" }}>
+                <div style={{ ...f(14, 600), color: "var(--text)" }}>{m.name}</div>
+                <div style={{ ...f(12, 400), color: "var(--text3)" }}>{m.email}{m.location ? ` · ${m.location}` : ""}</div>
+                <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>Submitted {m.submittedAt}</div>
+                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                  <button onClick={() => { setConfirmModal({ title: `Approve ${m.name}?`, message: `${m.name} will become a union member.`, onConfirm: async () => { if (m.uid) await approveMember(m.uid); setMemberEmails(prev => [...prev, m.email]); setToastMsg({ message: `${m.name} approved!` }); } }); }} style={{ flex: 1, padding: "8px", background: "rgba(45,122,79,0.15)", border: "1px solid var(--green)", borderRadius: 6, color: "var(--green)", ...f(11, 700), cursor: "pointer" }}>APPROVE</button>
+                  <button onClick={() => { setConfirmModal({ title: `Deny ${m.name}?`, message: "This will reject their membership request.", danger: true, onConfirm: async () => { if (m.uid) await denyMember(m.uid); setToastMsg({ message: `${m.name} denied` }); } }); }} style={{ flex: 1, padding: "8px", background: "rgba(192,57,43,0.1)", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, color: "var(--red)", ...f(11, 700), cursor: "pointer" }}>DENY</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* OFFICIALS TAB (super admin only) */}
+      {tab === "officials" && isSuper && (
+        <>
+          {/* Officers */}
+          <div style={{ ...card({ padding: "16px" }), ...col(12) }}>
+            <div style={{ ...f(12, 700), color: "var(--gold)", letterSpacing: ".1em", marginBottom: 4 }}>Add Officer by Email</div>
+            <div style={col(5)}><input style={inp()} value={newAdminEmail} onChange={e => setNewAdminEmail(e.target.value)} placeholder="official@dwa.org" /></div>
+            {adminMgmtError && <div style={{ ...f(12, 400, 'serif'), color: "var(--red)", fontStyle: "italic" }}>{adminMgmtError}</div>}
+            {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>✓ Saved!</div>}
+            <button style={btnGold(!newAdminEmail.trim())} disabled={!newAdminEmail.trim()} onClick={() => {
+              const e = newAdminEmail.toLowerCase().trim();
+              if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) { setAdminMgmtError("Invalid email."); return; }
+              if (e === SUPER_ADMIN_EMAIL) { setAdminMgmtError("That's the super admin."); return; }
+              if (adminEmails.map(a => a.toLowerCase()).includes(e)) { setAdminMgmtError("Already an official."); return; }
+              setAdminEmails(prev => [...prev, e]); setNewAdminEmail(""); setAdminMgmtError(""); saveFlash(() => { });
+            }}>PROMOTE TO OFFICER</button>
+          </div>
+          <div style={{ ...card({ padding: "16px" }), ...col(8) }}>
+            <div style={{ ...f(12, 700), color: "var(--gold)", marginBottom: 8 }}>Current Officers</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--seam)" }}>
+              <div style={{ flex: 1, ...f(13, 400), color: "var(--text)" }}>{SUPER_ADMIN_EMAIL}</div>
+              <div style={{ ...f(9, 700), color: "#1a0f00", background: "linear-gradient(135deg,#a06b18,#c9922a)", padding: "3px 8px", borderRadius: 6 }}>SUPER</div>
+            </div>
+            {adminEmails.map(em => (
+              <div key={em} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--seam)" }}>
+                <div style={{ flex: 1, ...f(13, 400), color: "var(--text)" }}>{em}</div>
+                <div style={{ ...f(9, 700), color: "var(--gold)", background: "rgba(201,146,42,0.1)", padding: "3px 8px", borderRadius: 6 }}>OFFICER</div>
+                <button onClick={() => { setConfirmModal({ title: `Demote ${em}?`, message: "They will no longer have officer privileges.", danger: true, onConfirm: () => { setAdminEmails(prev => prev.filter(a => a !== em)); setToastMsg({ message: `${em} demoted from officer` }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>DEMOTE</button>
+              </div>
+            ))}
+          </div>
+
+          {/* Stewards roster */}
+          <div className="gold-rule" style={{ margin: "4px 0" }} />
+          <div style={{ ...card({ padding: "16px" }), ...col(12) }}>
+            <div style={{ ...f(12, 700), color: "var(--gold)", letterSpacing: ".1em", marginBottom: 4 }}>Add Steward to Roster</div>
+            <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginBottom: 4 }}>Adds the steward to the public contact roster. To grant app permissions, use the MEMBERS tab.</div>
+            <div style={col(5)}>
+              <label style={lbl}>Full Name</label>
+              <input style={inp()} value={newStewardName} onChange={e => setNewStewardName(e.target.value)} placeholder="Member's full name" />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div style={col(5)}>
+                <label style={lbl}>Location</label>
+                <select style={dropStyle()} value={newStewardDept} onChange={e => setNewStewardDept(e.target.value)}>
+                  <option>Jersey City</option>
+                  <option>Florence</option>
+                </select>
+              </div>
+              <div style={col(5)}>
+                <label style={lbl}>Phone (optional)</label>
+                <input style={inp()} type="tel" value={newStewardPhone} onChange={e => setNewStewardPhone(e.target.value)} placeholder="Phone number" />
+              </div>
+            </div>
+            <button style={btnGold(!newStewardName.trim())} disabled={!newStewardName.trim()} onClick={() => {
+              setStewardsData(prev => { const updated = [...prev, { id: Date.now(), name: newStewardName.trim(), title: "Shop Steward", dept: newStewardDept, phone: newStewardPhone.replace(/\D/g, "") }]; saveStewards(updated); return updated; });
+              setNewStewardName(""); setNewStewardPhone(""); setNewStewardDept("Jersey City");
+              saveFlash(() => {});
+            }}>ADD TO ROSTER</button>
+          </div>
+          <div style={{ ...card({ padding: "16px" }), ...col(8) }}>
+            <div style={{ ...f(12, 700), color: "var(--gold)", marginBottom: 8 }}>Stewards Roster ({stewardsData.length})</div>
+            {stewardsData.length === 0 && <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>No stewards on the roster.</div>}
+            {stewardsData.map(s => (
+              <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--seam)" }}>
+                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#2a1f0a", border: "1px solid #6b5a2e", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ ...f(10, 600), color: "#c4a44e" }}>{s.name.split(" ").map(n => n[0]).join("").slice(0, 2)}</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ ...f(13, 600), color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
+                  <div style={{ ...f(10, 400, "serif"), color: "var(--text3)", fontStyle: "italic" }}>{s.dept || "—"}{s.phone ? ` · ${s.phone}` : ""}</div>
+                </div>
+                <div style={{ ...f(9, 700), color: "#e8b84b", background: "#2a1f0a", padding: "3px 8px", borderRadius: 6 }}>STEWARD</div>
+                <button onClick={() => { setConfirmModal({ title: `Remove ${s.name} from roster?`, message: `${s.name} will be removed from the public stewards roster.`, danger: true, onConfirm: () => { const removed = s; setStewardsData(prev => { const updated = prev.filter(x => x.id !== s.id); saveStewards(updated); return updated; }); setToastMsg({ message: `${s.name} removed from roster`, onUndo: () => { setStewardsData(prev => { const restored = [...prev, removed]; saveStewards(restored); return restored; }); } }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer", flexShrink: 0 }}>REMOVE</button>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
