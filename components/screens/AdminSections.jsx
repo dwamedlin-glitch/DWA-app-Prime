@@ -716,7 +716,7 @@ function UserAdminPanel({ ctx }) {
     stewardsData, setStewardsData, saveStewards,
     adminSaved, saveFlash,
     // shared
-    setConfirmModal, setToastMsg,
+    setConfirmModal, setToastMsg, setAdminSection,
   } = ctx;
 
   const [tab, setTab] = React.useState(pendingMembers && pendingMembers.length > 0 ? "requests" : "members");
@@ -729,7 +729,10 @@ function UserAdminPanel({ ctx }) {
 
   return (
     <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
-      <AdminFormHeader title="User Admin" />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+        <div style={{ ...f(10, 700), color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".15em" }}>User Admin</div>
+        <button onClick={() => setAdminSection(null)} style={{ ...f(12, 700), color: "var(--text3)", background: "none", border: "none", cursor: "pointer", letterSpacing: ".1em" }}>← BACK</button>
+      </div>
 
       {/* Tab nav */}
       <div style={{ display: "flex", borderBottom: "1px solid var(--seam)" }}>
