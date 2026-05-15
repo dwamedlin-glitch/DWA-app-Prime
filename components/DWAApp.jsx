@@ -83,7 +83,6 @@ export default function DWAApp() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState(false);
-  const [showWhatsNew, setShowWhatsNew] = useState(true);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [profileUserId, setProfileUserId] = useState(null);
@@ -811,30 +810,6 @@ export default function DWAApp() {
   useEffect(() => { if (toastMsg) { const t = setTimeout(() => setToastMsg(null), 5000); return () => clearTimeout(t); } }, [toastMsg]);
 
   // ── WHAT'S NEW POPUP ──
-  const WhatsNewPopup = () => {
-    if (!showWhatsNew) return null;
-    return (
-      <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} className="fade">
-        <div style={{ ...card({ padding: "28px 24px" }), maxWidth: 340, width: "88%", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", textAlign: "center" }}>
-          <div style={{ ...f(36, 400, 'bebas'), color: "var(--gold)", letterSpacing: ".08em", marginBottom: 4 }}>WHAT'S NEW</div>
-          <div className="gold-rule" style={{ marginBottom: 16 }} />
-          <div style={{ ...col(10), textAlign: "left", marginBottom: 20 }}>
-            <div style={{ ...f(13, 400, 'serif'), color: "var(--text2)", lineHeight: 1.6 }}>
-              <span style={{ color: "var(--gold)", fontWeight: 600, fontStyle: "normal" }}>Action Dashboard</span> — <span style={{ fontStyle: "italic" }}>officers see what needs attention in one place.</span>
-            </div>
-            <div style={{ ...f(13, 400, 'serif'), color: "var(--text2)", lineHeight: 1.6 }}>
-              <span style={{ color: "var(--gold)", fontWeight: 600, fontStyle: "normal" }}>Undo Support</span> — <span style={{ fontStyle: "italic" }}>deleted something by accident? Hit undo within 5 seconds.</span>
-            </div>
-            <div style={{ ...f(13, 400, 'serif'), color: "var(--text2)", lineHeight: 1.6 }}>
-              <span style={{ color: "var(--gold)", fontWeight: 600, fontStyle: "normal" }}>Settings</span> — <span style={{ fontStyle: "italic" }}>dark/light mode, EN/ES language, and notification controls.</span>
-            </div>
-          </div>
-          <button onClick={() => setShowWhatsNew(false)} style={btnGold()}>GOT IT!</button>
-        </div>
-      </div>
-    );
-  };
-
   // ── LOADING SKELETON COMPONENTS ──
   const SkeletonCard = ({ lines = 3, avatar = false }) => (
     <div style={{ ...card({ padding: "16px 14px", marginBottom: 12 }), display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -2089,7 +2064,6 @@ export default function DWAApp() {
           </div>
         </div>
       </div>
-      <WhatsNewPopup />
       <SettingsPanel2 />
       <NotifInbox2 />
       <ConfirmModal2 />
