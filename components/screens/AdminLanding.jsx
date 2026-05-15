@@ -120,58 +120,31 @@ export default function AdminLanding({ ctx }) {
         </div>
       )}
 
-      {/* Quick Actions */}
-      <div style={col(8)}>
-        <div style={{ ...f(9, 700), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".15em" }}>Quick Actions</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {[
-            { icon: "bell", label: "Post Announcement", action: () => setAdminSection("announcements") },
-            { icon: "notes", label: "Post Minutes", action: () => setAdminSection("minutes") },
-            { icon: "file", label: "Upload Document", action: () => setAdminSection("documents") },
-            { icon: "shield", label: "Update Seniority", action: () => setAdminSection("seniority") },
-          ].map(qa => (
-            <div key={qa.label} onClick={qa.action} className="tile" style={{
-              ...tileStyle(),
-
-              borderRadius: 10, padding: "14px",
-
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center",
-            }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, ...tileIconStyle(), display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gold)" }}>
-                <SectionIcon icon={qa.icon} size={18} />
-              </div>
-              <div style={{ ...f(12, 600, "bebas"), color: "var(--cream)", letterSpacing: ".05em" }}>{qa.label}</div>
+      {/* Officer Actions — single unified grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {[
+          { icon: "bell", label: "Post Announcement", action: () => setAdminSection("announcements") },
+          { icon: "notes", label: "Post Minutes", action: () => setAdminSection("minutes") },
+          { icon: "file", label: "Upload Document", action: () => setAdminSection("documents") },
+          { icon: "shield", label: "Update Seniority", action: () => setAdminSection("seniority") },
+          { icon: "calendar", label: "Union Meeting", action: () => setAdminSection("meeting") },
+          { icon: "video", label: "Zoom Room", action: () => setAdminSection("zoom") },
+          { icon: "phone", label: "DWA Contacts", action: () => setAdminSection("contacts") },
+          { icon: "users", label: pendingMembers.length > 0 ? `User Admin (${pendingMembers.length})` : "User Admin", action: () => setAdminSection("useradmin") },
+          { icon: "bell", label: "Send Notification", action: () => setAdminSection("broadcast") },
+          ...(bannedUsers.length > 0 ? [{ icon: "x", label: `Banned (${bannedUsers.length})`, action: () => setAdminSection("banned") }] : []),
+        ].map(qa => (
+          <div key={qa.label} onClick={qa.action} className="tile" style={{
+            ...tileStyle(),
+            borderRadius: 10, padding: "14px",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center",
+          }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, ...tileIconStyle(), display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gold)" }}>
+              <SectionIcon icon={qa.icon} size={18} />
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* More */}
-      <div style={col(8)}>
-        <div style={{ ...f(9, 700), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".15em" }}>More</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {[
-            { icon: "calendar", label: "Union Meeting", action: () => setAdminSection("meeting") },
-            { icon: "video", label: "Zoom Room", action: () => setAdminSection("zoom") },
-            { icon: "phone", label: "DWA Contacts", action: () => setAdminSection("contacts") },
-            { icon: "users", label: pendingMembers.length > 0 ? `User Admin (${pendingMembers.length})` : "User Admin", action: () => setAdminSection("useradmin") },
-            { icon: "bell", label: "Send Notification", action: () => setAdminSection("broadcast") },
-            ...(bannedUsers.length > 0 ? [{ icon: "x", label: `Banned (${bannedUsers.length})`, action: () => setAdminSection("banned") }] : []),
-          ].map(qa => (
-            <div key={qa.label} onClick={qa.action} className="tile" style={{
-              ...tileStyle(),
-
-              borderRadius: 10, padding: "14px",
-
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center",
-            }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, ...tileIconStyle(), display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gold)" }}>
-                <SectionIcon icon={qa.icon} size={18} />
-              </div>
-              <div style={{ ...f(12, 600, "bebas"), color: "var(--cream)", letterSpacing: ".05em" }}>{qa.label}</div>
-            </div>
-          ))}
-        </div>
+            <div style={{ ...f(12, 600, "bebas"), color: "var(--cream)", letterSpacing: ".05em" }}>{qa.label}</div>
+          </div>
+        ))}
       </div>
 
     </div>
