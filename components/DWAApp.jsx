@@ -600,20 +600,15 @@ export default function DWAApp() {
   };
 
   const handleGrievance = async () => {
-    if (!incidentDate || !supervisorName.trim() || !incidentTime || !description.trim()) {
+    if (!incidentDate || !description.trim() || !contractArticle.trim()) {
       setGrievanceError(true); setShakeKey(k => k + 1); return;
     }
     const grievancePayload = {
-      issueType,
-      incidentDate,
-      incidentTime,
-      incidentLocation,
-      supervisorName,
-      witnesses,
-      description,
-      remedy,
-      contractArticle,
-      priorGrievance,
+      incidentDate,                 // Date of Incident
+      description,                  // Explanation of Grievance
+      remedy,                       // Proposed Solution
+      witnesses,                    // Witness(es)
+      signature: contractArticle,   // Signature (stored under semantic key)
       submitterUid: currentUid || null,
       submitterName: currentUserName || "Member",
       submitterEmail: currentUserEmail || "",

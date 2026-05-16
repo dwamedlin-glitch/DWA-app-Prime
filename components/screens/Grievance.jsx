@@ -55,16 +55,8 @@ export default function Grievance({ ctx }) {
       {grievanceError && <div style={{ background: "rgba(192,57,43,0.08)", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 8, padding: "12px 16px", ...f(12, 400, 'serif'), color: "var(--red)", marginBottom: 16, fontStyle: "italic" }}>Please fill in all required fields marked with *</div>}
       <div style={{ ...card({ padding: "18px" }), ...col(18), marginBottom: 20 }}>
         <div style={col(6)}>
-          <label style={lbl}>Today's Date *</label>
+          <label style={lbl}>Date of Incident *</label>
           <input type="date" style={{ ...inp(grievanceError && !incidentDate), width: "100%" }} value={incidentDate} onChange={e => setIncidentDate(e.target.value)} />
-        </div>
-        <div style={col(6)}>
-          <label style={lbl}>Name of Union Employee *</label>
-          <input style={{ ...inp(grievanceError && !supervisorName), width: "100%" }} placeholder="Employee's full name" value={supervisorName} onChange={e => setSupervisorName(e.target.value)} />
-        </div>
-        <div style={col(6)}>
-          <label style={lbl}>Date of Grievance *</label>
-          <input type="date" style={{ ...inp(grievanceError && !incidentTime), width: "100%" }} value={incidentTime} onChange={e => setIncidentTime(e.target.value)} />
         </div>
         <div className="gold-rule" />
         <div style={col(6)}>
@@ -78,12 +70,12 @@ export default function Grievance({ ctx }) {
         </div>
         <div className="gold-rule" />
         <div style={col(6)}>
-          <label style={lbl}>Witness</label>
+          <label style={lbl}>Witness(es)</label>
           <input style={{ ...inp(), width: "100%" }} placeholder="Name(s) of any witnesses" value={witnesses} onChange={e => setWitnesses(e.target.value)} />
         </div>
         <div style={col(6)}>
-          <label style={lbl}>Signature</label>
-          <input style={{ ...inp(), width: "100%" }} placeholder="Type your full name to sign" value={contractArticle} onChange={e => setContractArticle(e.target.value)} />
+          <label style={lbl}>Signature *</label>
+          <input style={{ ...inp(grievanceError && !contractArticle.trim()), width: "100%" }} placeholder="Type your full name to sign" value={contractArticle} onChange={e => setContractArticle(e.target.value)} />
         </div>
       </div>
       <div key={shakeKey} className={grievanceError ? "shake" : ""}>
