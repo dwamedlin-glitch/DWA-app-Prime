@@ -1,6 +1,6 @@
 /* DWA v1.5.0 */
 import { useState, useEffect, useRef } from "react";
-import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, uploadDocumentFile, uploadFloorPhoto, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority, registerUser, loginUser, logoutUser, onAuthChange, saveUserProfile, getUserProfile, subscribeToPendingMembers, approveMember, denyMember, subscribeToApprovedMembers, updateUserRole, deleteUserProfile, sendPasswordResetToUser } from "../lib/firebase";
+import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, uploadDocumentFile, uploadFloorPhoto, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority, saveAdminEmails as fbSaveAdminEmails, loadAdminEmails as fbLoadAdminEmails, registerUser, loginUser, logoutUser, onAuthChange, saveUserProfile, getUserProfile, subscribeToPendingMembers, approveMember, denyMember, subscribeToApprovedMembers, updateUserRole, deleteUserProfile, sendPasswordResetToUser } from "../lib/firebase";
 import { getApp } from "firebase/app";
 import { getFirestore, doc, updateDoc } from "firebase/firestore";
 import ProfilePage from "./ProfilePage";
@@ -62,13 +62,7 @@ export default function DWAApp() {
   const [memberEmails, setMemberEmails] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
 
-  const [seniority, setSeniority] = useState([
-    { id: 1, name: "Robert Martinez", hireDate: "1998-03-14", location: "Jersey City" },
-    { id: 2, name: "James O'Brien", hireDate: "2001-06-02", location: "Florence" },
-    { id: 3, name: "Michael Thompson", hireDate: "2003-11-21", location: "Jersey City" },
-    { id: 4, name: "David Chen", hireDate: "2008-04-17", location: "Florence" },
-    { id: 5, name: "Anthony Russo", hireDate: "2012-09-05", location: "Jersey City" },
-  ]);
+  const [seniority, setSeniority] = useState([]);
   const [seniorityFilter, setSeniorityFilter] = useState("All");
   const [newSenName, setNewSenName] = useState("");
   const [newSenDate, setNewSenDate] = useState("");
@@ -114,11 +108,8 @@ export default function DWAApp() {
   const sessionWarningTimerRef = useRef(null);
   const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // 15 min idle → logout
   const SESSION_WARNING_MS = 13 * 60 * 1000; // warn at 13 min
-  const APP_VERSION = "1.3.0";
-  const [myGrievances] = useState([
-    { id: 1, type: "Scheduling or overtime issue", date: "Apr 3, 2026", status: "review" },
-    { id: 2, type: "Wage or pay dispute", date: "Feb 18, 2026", status: "resolved" },
-  ]);
+  const APP_VERSION = "1.5.0";
+  const [myGrievances] = useState([]);
   const [docSearch, setDocSearch] = useState("");
   const [docCat, setDocCat] = useState("All");
   const [announcements, setAnnouncements] = useState(ANNOUNCEMENTS);
@@ -129,10 +120,7 @@ export default function DWAApp() {
   const [editAnnId, setEditAnnId] = useState(null); // null = new post, id = editing existing
   const [annLang, setAnnLang] = useState("en"); // language toggle for announcements tab
   const [translating, setTranslating] = useState(false); // translation loading state
-  const [minutes, setMinutes] = useState([
-    { id: 1, title: "General Meeting – April 2026", date: "Apr 5, 2026", summary: "Members voted on contract language proposals. Steward election results announced. Next meeting May 15." },
-    { id: 2, title: "Special Meeting – March 2026", date: "Mar 12, 2026", summary: "Management presented proposed changes to overtime policy. Union leadership taking comments through March 20." },
-  ]);
+  const [minutes, setMinutes] = useState([]);
   const [notifs, setNotifs] = useState({ meetings: true, announcements: true, grievances: false });
   const push = usePushNotifications();
   // Notification inbox: persisted history of recent push notifications.
@@ -267,6 +255,22 @@ export default function DWAApp() {
     });
     return () => { unsubscribe(); if (debounceTimer) clearTimeout(debounceTimer); };
   }, []);
+
+  // Admin emails: load once from Firestore on mount, then auto-persist on change
+  const adminEmailsLoadedRef = useRef(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        const loaded = await fbLoadAdminEmails();
+        if (loaded && loaded.length > 0) setAdminEmails(loaded);
+      } catch (e) { console.error("Failed to load admin emails:", e); }
+      adminEmailsLoadedRef.current = true;
+    })();
+  }, []);
+  useEffect(() => {
+    if (!adminEmailsLoadedRef.current) return;
+    fbSaveAdminEmails(adminEmails).catch(e => console.error("Failed to save admin emails:", e));
+  }, [adminEmails]);
 
   // Subscribe to banned users
   useEffect(() => {
@@ -647,10 +651,14 @@ export default function DWAApp() {
     try { await fbSaveSeniority(list); } catch (e) { console.log("Failed to save seniority:", e); }
   };
 
-  const filteredDocs = documents.filter(d =>
-    (docCat === "All" || d.category === docCat) &&
-    d.name.toLowerCase().includes(docSearch.toLowerCase())
-  );
+  const filteredDocs = documents.filter(d => {
+    if (docCat !== "All" && d.category !== docCat) return false;
+    const q = docSearch.toLowerCase().trim();
+    if (!q) return true;
+    return (d.name || "").toLowerCase().includes(q)
+        || (d.category || "").toLowerCase().includes(q)
+        || (d.description || "").toLowerCase().includes(q);
+  });
 
   const postAnn = async () => {
     if (!annTitle.trim() || !annBody.trim()) return;
@@ -1126,6 +1134,9 @@ export default function DWAApp() {
       clip: <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />,
       notes: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></>,
       gear: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
+      camera: <><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></>,
+      x: <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+      doc: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></>,
     };
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", flexShrink: 0 }}>
@@ -1169,7 +1180,19 @@ export default function DWAApp() {
                     </div>
                     <span style={{ ...f(13, 400), color: "var(--text2)" }}>Remember me</span>
                   </div>
-                  <span onClick={() => alert("Contact your steward to reset your password.")} style={{ ...f(12, 400, 'serif'), color: "var(--gold)", cursor: "pointer", fontStyle: "italic" }}>Forgot password?</span>
+                  <span onClick={async () => {
+                    const e = email.trim();
+                    if (!e || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+                      setToastMsg({ message: "Enter your email above, then tap Forgot password." });
+                      return;
+                    }
+                    try {
+                      await sendPasswordResetToUser(e);
+                      setToastMsg({ message: `Reset link sent to ${e}` });
+                    } catch (err) {
+                      setToastMsg({ message: "Couldn't send reset email. Check the address." });
+                    }
+                  }} style={{ ...f(12, 400, 'serif'), color: "var(--gold)", cursor: "pointer", fontStyle: "italic" }}>Forgot password?</span>
                 </div>
                 <button style={btnGold(authLoading)} disabled={authLoading} onClick={handleLogin}>{authLoading ? "SIGNING IN…" : "SIGN IN"}</button>
               </div>
@@ -1457,11 +1480,6 @@ export default function DWAApp() {
                       <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginTop: 4 }}>Dairy Workers Association Constitution & By-Laws</div>
                       <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", marginTop: 2 }}>11 Articles</div>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--leather3)", borderRadius: 8, padding: 4, border: "1px solid var(--seam)" }}>
-                      {["en", "es"].map(l => (
-                        <div key={l} onClick={() => setLang(l)} style={{ padding: "4px 10px", borderRadius: 6, background: lang === l ? "var(--gold)" : "transparent", color: lang === l ? "#1a0f00" : "var(--text3)", ...f(11, 700), cursor: "pointer", textTransform: "uppercase" }}>{l}</div>
-                      ))}
-                    </div>
                   </div>
                   <div style={{ height: 1, background: "linear-gradient(90deg, transparent, var(--seam), transparent)", marginBottom: 12 }} />
                   {/* Full document download card */}
@@ -1570,11 +1588,6 @@ export default function DWAApp() {
                       <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginTop: 4 }}>Collective Bargaining Agreement 2025–2028</div>
                       <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", marginTop: 2 }}>17 Articles</div>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--leather3)", borderRadius: 8, padding: 4, border: "1px solid var(--seam)" }}>
-                      {["en", "es"].map(l => (
-                        <div key={l} onClick={() => setLang(l)} style={{ padding: "4px 10px", borderRadius: 6, background: lang === l ? "var(--gold)" : "transparent", color: lang === l ? "#1a0f00" : "var(--text3)", ...f(11, 700), cursor: "pointer", textTransform: "uppercase" }}>{l}</div>
-                      ))}
-                    </div>
                   </div>
                   <div style={{ height: 1, background: "linear-gradient(90deg, transparent, var(--seam), transparent)", marginBottom: 12 }} />
                   {/* Full document download card */}
@@ -1588,7 +1601,7 @@ export default function DWAApp() {
                       <div style={{ ...f(11, 400, "serif"), color: "var(--text3)", fontStyle: "italic", marginTop: 2 }}>{lang === "es" ? "17 artículos · Descargar como HTML" : "All 17 articles · Download as HTML file"}</div>
                     </div>
                     <button
-                      onClick={() => downloadDoc("DWA Union Contract 2025-2028", "Collective Bargaining Agreement — Cream-O-Land Dairy & Dairy Workers Association", lang === "en" ? cbaArticlesData : cbaArticlesData_ES)}
+                      onClick={() => downloadDoc("DWA Union Contract 2025-2028", "Collective Bargaining Agreement — Cream-O-Land Dairy & Dairy Workers Association", lang === "en" ? cbaArticlesData : CBA_ARTICLES_ES)}
                       style={{ flexShrink: 0, padding: "9px 14px", background: "linear-gradient(135deg,#a06b18,#c9922a)", border: "1px solid var(--gold)", borderRadius: 8, color: "#1a0f00", ...f(11, 700, 'bebas'), letterSpacing: ".1em", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -2000,7 +2013,7 @@ export default function DWAApp() {
                 setNotifLastRead(now);
                 try { localStorage.setItem("dwa-notif-last-read", String(now)); } catch {}
               }}
-              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", position: "relative" }}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", padding: 10, minWidth: 44, minHeight: 44 }}
               title="Notifications"
             >
               <SectionIcon icon="bell" size={20} />
@@ -2010,10 +2023,10 @@ export default function DWAApp() {
                 </span>
               )}
             </button>
-            <button onClick={() => { setProfileUserId(null); setShowProfile(true); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", position: "relative" }} title="My Profile">
+            <button onClick={() => { setProfileUserId(null); setShowProfile(true); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", padding: 10, minWidth: 44, minHeight: 44 }} title="My Profile">
               <SectionIcon icon="user" size={20} />
             </button>
-            <button onClick={() => setShowSettingsPanel(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", position: "relative" }}>
+            <button onClick={() => setShowSettingsPanel(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", padding: 10, minWidth: 44, minHeight: 44 }}>
               <SectionIcon icon="gear" size={20} />
             </button>
           </div>
@@ -2034,7 +2047,7 @@ export default function DWAApp() {
           {!tabDataLoading && tab === "grievance" && <GrievanceExt ctx={{ card, col, f, inp, btnGold, btnOutline, lbl, SectionIcon, grievanceSubmitted, grievanceError, incidentDate, setIncidentDate, supervisorName, setSupervisorName, incidentTime, setIncidentTime, description, setDescription, remedy, setRemedy, witnesses, setWitnesses, contractArticle, setContractArticle, shakeKey, handleGrievance, resetGrievance }} />}
           {!tabDataLoading && tab === "documents" && <DocumentsExt ctx={{ card, col, row, f, inp, SectionIcon, documents, filteredDocs, docSearch, setDocSearch, docCat, setDocCat, allDocCategories, docFileIcon, setSub }} />}
           {!tabDataLoading && tab === "announcements" && <AnnouncementsExt ctx={{ col, f, card, annLang, setAnnLang, announcements, setSub }} />}
-          {!tabDataLoading && tab === "zoom" && <ZoomExt ctx={{ col, card, row, f, SectionIcon, zoomInfo }} />}
+          {!tabDataLoading && tab === "zoom" && <ZoomExt ctx={{ col, card, row, f, SectionIcon, zoomInfo, setToastMsg }} />}
           {!tabDataLoading && tab === "minutes" && <MinutesExt ctx={{ card, f, row, minLang, setMinLang, minutes }} />}
           {!tabDataLoading && tab === "seniority" && <SeniorityExt ctx={{ seniority, seniorityFilter, setSeniorityFilter, card, f }} />}
           {!tabDataLoading && tab === "admin" && !adminSection && <AdminLandingExt ctx={{ card, col, f, SectionIcon, pendingMembers, setAdminSection, isSteward, isSuper, bannedUsers, tileStyle, tileIconStyle }} />}

@@ -193,14 +193,14 @@ export default function AdminSections({ section, ctx }) {
       <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
         <AdminFormHeader title="Union Meeting" />
         <div style={{ ...card({ padding: "16px" }), ...col(12) }}>
-          {[["Meeting Title", "title", "e.g. Contract Ratification Vote"], ["Date", "date", "e.g. May 15, 2026"], ["Time", "time", "e.g. 6:00 PM"], ["Location", "location", "e.g. Union Hall"]].map(([label, key, ph]) => (
+          {[["Meeting Title", "title", "e.g. Contract Ratification Vote", "text"], ["Date", "date", "", "date"], ["Time", "time", "", "time"], ["Location", "location", "e.g. Union Hall", "text"]].map(([label, key, ph, type]) => (
             <div key={key} style={col(5)}>
               <label style={lbl}>{label}</label>
-              <input style={inp()} value={editMeeting[key] || ""} placeholder={ph} onChange={e => setEditMeeting(prev => ({ ...prev, [key]: e.target.value }))} />
+              <input type={type} style={inp()} value={editMeeting[key] || ""} placeholder={ph} onChange={e => setEditMeeting(prev => ({ ...prev, [key]: e.target.value }))} />
             </div>
           ))}
           {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>✓ Saved!</div>}
-          <button style={btnGold()} onClick={() => { const info = { ...editMeeting }; setNextMeeting(info); saveMeetingInfo(info); saveFlash(() => {}); try { fetch('/api/notifications/meeting-updated', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: info.title || 'Union Meeting', date: info.date, time: info.time, location: info.location || '', zoomId: zoomInfo?.id || '', zoomPasscode: zoomInfo?.passcode || '', zoomLink: zoomInfo?.link || '' }) }); } catch(e) { console.log('Meeting notification failed:', e); } }}>SAVE MEETING INFO</button>
+          <button style={btnGold()} onClick={async () => { const info = { ...editMeeting }; setNextMeeting(info); saveMeetingInfo(info); saveFlash(() => {}); try { await fetch('/api/notifications/meeting-updated', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: info.title || 'Union Meeting', date: info.date, time: info.time, location: info.location || '', zoomId: zoomInfo?.id || '', zoomPasscode: zoomInfo?.passcode || '', zoomLink: zoomInfo?.link || '' }) }); setToastMsg({ message: "Meeting saved · members notified" }); } catch(e) { console.log('Meeting notification failed:', e); setToastMsg({ message: "Meeting saved (notification failed)" }); } }}>SAVE MEETING INFO</button>
         </div>
         <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>Preview: {editMeeting.title} · {editMeeting.date} · {editMeeting.location}</div>
       </div>

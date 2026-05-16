@@ -8,6 +8,7 @@ export default function Zoom({ ctx }) {
     f,
     SectionIcon,
     zoomInfo,
+    setToastMsg,
   } = ctx;
 
   return (
@@ -43,8 +44,8 @@ export default function Zoom({ ctx }) {
             <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>{item.label}</div>
             <div style={{ ...row("center", 8) }}>
               <div style={{ ...f(15, 700), color: item.color || "var(--text)", letterSpacing: ".06em" }}>{item.value}</div>
-              {item.label === "Meeting ID" && (
-                <button onClick={() => { navigator.clipboard.writeText(zoomInfo.meetingId.replace(/ /g, "")); alert("Meeting ID copied!"); }} style={{ ...f(9, 700), color: "var(--gold)", background: "rgba(201,146,42,0.1)", border: "1px solid rgba(201,146,42,0.2)", borderRadius: 6, padding: "3px 8px", cursor: "pointer", letterSpacing: ".08em" }}>COPY</button>
+              {(item.label === "Meeting ID" || item.label === "Passcode") && (
+                <button onClick={() => { navigator.clipboard.writeText(String(item.value).replace(/ /g, "")); setToastMsg && setToastMsg({ message: `${item.label} copied` }); }} style={{ ...f(9, 700), color: "var(--gold)", background: "rgba(201,146,42,0.1)", border: "1px solid rgba(201,146,42,0.2)", borderRadius: 6, padding: "3px 8px", cursor: "pointer", letterSpacing: ".08em" }}>COPY</button>
               )}
             </div>
           </div>

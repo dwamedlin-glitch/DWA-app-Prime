@@ -28,7 +28,7 @@ export default function Announcements({ ctx }) {
           <div key={a.id} onClick={() => setSub({ type: "ann", data: a })} className="tile" style={{ ...card({ padding: "16px" }) }}>
             {a.urgent && <div className="urgent-pulse" style={{ ...f(9, 700), color: "var(--gold)", background: "rgba(201,146,42,0.1)", padding: "2px 8px", borderRadius: 4, display: "inline-block", marginBottom: 8, letterSpacing: ".15em" }}>⚡ URGENT</div>}
             <div style={{ ...f(16, 600), color: "var(--text)", lineHeight: 1.25 }}>{displayTitle}</div>
-            <div style={{ ...f(12, 400, 'serif'), color: "var(--text2)", marginTop: 8, lineHeight: 1.6 }}>{displayBody.slice(0, 120)}…</div>
+            <div style={{ ...f(12, 400, 'serif'), color: "var(--text2)", marginTop: 8, lineHeight: 1.6 }}>{displayBody.length > 120 ? `${displayBody.slice(0, 120)}…` : displayBody}</div>
             <div style={{ ...f(11, 700), color: "var(--gold)", marginTop: 12, letterSpacing: ".1em" }}>READ MORE →</div>
           </div>
         );

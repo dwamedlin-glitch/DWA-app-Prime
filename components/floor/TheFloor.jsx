@@ -88,7 +88,7 @@ export default function TheFloor({ ctx }) {
         <div style={{ ...row("center", 0), justifyContent: "flex-end", gap: 8 }}>
           <input ref={floorPhotoRef} type="file" accept="image/*" onChange={handleFloorPhotoSelect} style={{ display: "none" }} />
           <button onClick={() => floorPhotoRef.current?.click()} style={{ background: "none", border: "1px solid var(--seam)", borderRadius: 8, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, color: "var(--text3)" }} title="Add photo">
-            <SectionIcon icon="doc" size={14} />
+            <SectionIcon icon="camera" size={14} />
             <span style={{ ...f(11, 400, 'bebas'), letterSpacing: ".06em" }}>PHOTO</span>
           </button>
           <button onClick={handleFloorPost} disabled={floorPosting} style={{ ...btnGold(), width: "auto", minWidth: 110, padding: "10px 24px", ...f(12, 400, 'bebas'), letterSpacing: ".1em", opacity: floorPosting ? 0.5 : 1, transition: "opacity .15s ease" }}>{floorPosting ? "POSTING…" : "POST"}</button>
@@ -124,7 +124,6 @@ export default function TheFloor({ ctx }) {
                 <LocationTag loc={post.location} />
               </div>
               <span style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>{formatFloorTime(post.time)}</span>
-              <span style={{ ...f(9, 600), color: "var(--text3)", background: "var(--leather3)", padding: "1px 7px", borderRadius: 10, letterSpacing: ".03em" }}>Member since 2019</span>
             </div>
           </div>
           {/* Post body */}
