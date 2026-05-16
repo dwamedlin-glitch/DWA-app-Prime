@@ -556,6 +556,10 @@ export default function AdminSections({ section, ctx }) {
     return <BroadcastPanel ctx={ctx} />;
   }
 
+  if (section === "grievances") {
+    return <GrievancesPanel ctx={ctx} />;
+  }
+
   return null;
 }
 
@@ -923,6 +927,208 @@ function UserAdminPanel({ ctx }) {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function GrievancesPanel({ ctx }) {
+  const {
+    card, col, row, f, btnGold, btnOutline,
+    grievances, updateGrievanceStatus, deleteGrievance,
+    setAdminSection, setConfirmModal, setToastMsg,
+  } = ctx;
+
+  const [selected, setSelected] = React.useState(null);
+  const [filter, setFilter] = React.useState("all"); // all | new | reviewing | resolved
+
+  const list = (grievances || []).filter(g => filter === "all" || g.status === filter);
+  const counts = {
+    all: (grievances || []).length,
+    new: (grievances || []).filter(g => g.status === "new").length,
+    reviewing: (grievances || []).filter(g => g.status === "reviewing").length,
+    resolved: (grievances || []).filter(g => g.status === "resolved").length,
+  };
+
+  const fmtDate = (ms) => {
+    if (!ms) return "—";
+    const d = new Date(ms);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + " · " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  };
+  const statusColor = (s) => s === "new" ? "var(--red)" : s === "reviewing" ? "var(--gold)" : "var(--green)";
+  const statusBg = (s) => s === "new" ? "rgba(192,57,43,0.1)" : s === "reviewing" ? "rgba(201,146,42,0.1)" : "rgba(45,122,79,0.1)";
+
+  if (selected) {
+    return <GrievanceDetail ctx={ctx} grievance={selected} onBack={() => setSelected(null)} fmtDate={fmtDate} statusColor={statusColor} statusBg={statusBg} />;
+  }
+
+  return (
+    <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ ...f(11, 700), color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".15em" }}>Grievances</div>
+        <button onClick={() => setAdminSection(null)} style={{ ...f(12, 700), color: "var(--text3)", background: "none", border: "none", cursor: "pointer", letterSpacing: ".1em" }}>← BACK</button>
+      </div>
+
+      {/* Filter pills */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {[["all", "All"], ["new", "New"], ["reviewing", "Reviewing"], ["resolved", "Resolved"]].map(([id, label]) => (
+          <button key={id} onClick={() => setFilter(id)} style={{
+            padding: "6px 12px", borderRadius: 20, cursor: "pointer",
+            background: filter === id ? "var(--gold)" : "rgba(255,255,255,0.04)",
+            color: filter === id ? "#1a0f00" : "var(--text2)",
+            border: filter === id ? "none" : "1px solid var(--seam)",
+            ...f(11, 700), letterSpacing: ".05em",
+          }}>
+            {label} <span style={{ opacity: 0.7 }}>({counts[id]})</span>
+          </button>
+        ))}
+      </div>
+
+      {list.length === 0 ? (
+        <div style={{ ...card({ padding: "24px" }), textAlign: "center" }}>
+          <div style={{ ...f(13, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>
+            {filter === "all" ? "No grievances submitted yet." : `No ${filter} grievances.`}
+          </div>
+        </div>
+      ) : (
+        list.map(g => (
+          <div key={g.id} onClick={() => setSelected(g)} style={{ ...card({ padding: "14px", borderLeft: `3px solid ${statusColor(g.status)}` }), cursor: "pointer", ...col(6) }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ ...f(14, 600), color: "var(--cream)" }}>{g.submitterName || "Member"}</div>
+                <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>{fmtDate(g.submittedAtMs)}</div>
+              </div>
+              <div style={{ ...f(9, 700), color: statusColor(g.status), background: statusBg(g.status), padding: "3px 8px", borderRadius: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>{g.status || "new"}</div>
+            </div>
+            {g.issueType && <div style={{ ...f(11, 700), color: "var(--gold)", letterSpacing: ".05em" }}>{g.issueType}</div>}
+            <div style={{ ...f(12, 400, 'serif'), color: "var(--text2)", lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{g.description}</div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+function GrievanceDetail({ ctx, grievance, onBack, fmtDate, statusColor, statusBg }) {
+  const { card, col, f, btnGold, btnOutline, updateGrievanceStatus, deleteGrievance, setConfirmModal, setToastMsg } = ctx;
+  const g = grievance;
+
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank", "width=850,height=1100");
+    if (!printWindow) {
+      setToastMsg && setToastMsg({ message: "Please allow pop-ups to print." });
+      return;
+    }
+    const row = (label, value) => `<tr><td style="padding:8px 12px;border:1px solid #333;font-weight:600;width:35%;background:#f7f2e9;">${label}</td><td style="padding:8px 12px;border:1px solid #333;">${value || "—"}</td></tr>`;
+    const esc = (s) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Grievance — ${esc(g.submitterName)}</title>
+      <style>
+        body{font-family:'Helvetica',sans-serif;color:#000;background:#fff;padding:40px;max-width:800px;margin:0 auto;line-height:1.5;}
+        h1{font-size:22px;border-bottom:2px solid #c9922a;padding-bottom:8px;margin-bottom:6px;}
+        h2{font-size:14px;color:#c9922a;text-transform:uppercase;letter-spacing:.1em;margin-top:24px;margin-bottom:8px;}
+        table{width:100%;border-collapse:collapse;margin-bottom:16px;}
+        td{vertical-align:top;font-size:13px;}
+        .desc{padding:14px;background:#f7f2e9;border:1px solid #333;border-radius:4px;font-size:13px;white-space:pre-wrap;}
+        .footer{margin-top:40px;padding-top:16px;border-top:1px solid #ccc;font-size:11px;color:#666;}
+        @media print {body{padding:20px;}}
+      </style></head><body>
+      <h1>DAIRY WORKERS ASSOCIATION — GRIEVANCE</h1>
+      <div style="font-size:12px;color:#666;margin-bottom:24px;">Submitted ${esc(fmtDate(g.submittedAtMs))} · Status: <strong>${esc((g.status||"new").toUpperCase())}</strong></div>
+
+      <h2>Submitter</h2>
+      <table>${row("Name", esc(g.submitterName))}${row("Email", esc(g.submitterEmail))}${row("Location", esc(g.submitterLocation))}</table>
+
+      <h2>Incident</h2>
+      <table>${row("Date", esc(g.incidentDate))}${row("Time", esc(g.incidentTime))}${row("Location", esc(g.incidentLocation))}${row("Supervisor", esc(g.supervisorName))}${row("Witnesses", esc(g.witnesses))}${row("Type", esc(g.issueType))}${row("Contract / Article", esc(g.contractArticle))}${row("Prior Grievance", g.priorGrievance ? "Yes" : "No")}</table>
+
+      <h2>Description</h2>
+      <div class="desc">${esc(g.description)}</div>
+
+      <h2>Remedy Sought</h2>
+      <div class="desc">${esc(g.remedy) || "<em>(none specified)</em>"}</div>
+
+      <div class="footer">DWA Union · dwaunion.com · Reference ID: ${esc(g.id)}</div>
+      <script>window.onload=()=>{window.print();};</script>
+      </body></html>`);
+    printWindow.document.close();
+  };
+
+  const setStatus = async (newStatus) => {
+    try {
+      await updateGrievanceStatus(g.id, newStatus);
+      setToastMsg && setToastMsg({ message: `Status: ${newStatus}` });
+    } catch (e) {
+      console.error(e);
+      setToastMsg && setToastMsg({ message: "Failed to update status." });
+    }
+  };
+
+  const handleDelete = () => {
+    setConfirmModal({
+      title: "Delete this grievance?",
+      message: "This cannot be undone. The submission will be permanently removed.",
+      danger: true,
+      onConfirm: async () => {
+        try { await deleteGrievance(g.id); setToastMsg && setToastMsg({ message: "Grievance deleted" }); onBack(); }
+        catch (e) { setToastMsg && setToastMsg({ message: "Failed to delete." }); }
+      }
+    });
+  };
+
+  const field = (label, value) => (
+    <div style={col(2)}>
+      <div style={{ ...f(10, 700), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".1em" }}>{label}</div>
+      <div style={{ ...f(13, 400), color: "var(--text)" }}>{value || "—"}</div>
+    </div>
+  );
+
+  return (
+    <div className="rise" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <button onClick={onBack} style={{ ...f(12, 700), color: "var(--gold)", background: "none", border: "none", cursor: "pointer", letterSpacing: ".1em" }}>← ALL GRIEVANCES</button>
+        <div style={{ ...f(9, 700), color: statusColor(g.status), background: statusBg(g.status), padding: "3px 8px", borderRadius: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>{g.status || "new"}</div>
+      </div>
+
+      <div style={{ ...card({ padding: "16px" }), ...col(10) }}>
+        <div>
+          <div style={{ ...f(18, 600), color: "var(--cream)" }}>{g.submitterName || "Member"}</div>
+          <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>Submitted {fmtDate(g.submittedAtMs)}</div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {field("Email", g.submitterEmail)}
+          {field("Location", g.submitterLocation)}
+          {field("Issue Type", g.issueType)}
+          {field("Incident Date", g.incidentDate)}
+          {field("Incident Time", g.incidentTime)}
+          {field("Incident Location", g.incidentLocation)}
+          {field("Supervisor", g.supervisorName)}
+          {field("Witnesses", g.witnesses)}
+          {field("Contract / Article", g.contractArticle)}
+          {field("Prior Grievance", g.priorGrievance ? "Yes" : "No")}
+        </div>
+        <div style={col(2)}>
+          <div style={{ ...f(10, 700), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".1em" }}>Description</div>
+          <div style={{ ...f(13, 400, 'serif'), color: "var(--text)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{g.description || "—"}</div>
+        </div>
+        <div style={col(2)}>
+          <div style={{ ...f(10, 700), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".1em" }}>Remedy Sought</div>
+          <div style={{ ...f(13, 400, 'serif'), color: "var(--text)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{g.remedy || "—"}</div>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div style={{ ...card({ padding: "14px" }), ...col(10) }}>
+        <div style={{ ...f(11, 700), color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".1em" }}>Actions</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <button onClick={handlePrint} style={{ ...btnGold(), padding: "12px", ...f(12, 700), letterSpacing: ".08em" }}>PRINT</button>
+          <button onClick={() => { const subject = `Grievance from ${g.submitterName}`; const body = `Submitted ${fmtDate(g.submittedAtMs)}\n\nIssue: ${g.issueType||"-"}\nDate: ${g.incidentDate||"-"}\nSupervisor: ${g.supervisorName||"-"}\n\n${g.description||""}\n\nRemedy: ${g.remedy||"-"}`; window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`; }} style={{ padding: "12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid var(--seam)", color: "var(--cream)", ...f(12, 700), letterSpacing: ".08em", cursor: "pointer" }}>EMAIL</button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+          <button onClick={() => setStatus("new")} disabled={g.status === "new"} style={{ padding: "10px", borderRadius: 8, background: g.status === "new" ? "rgba(192,57,43,0.15)" : "rgba(255,255,255,0.03)", border: g.status === "new" ? "1px solid var(--red)" : "1px solid var(--seam)", color: g.status === "new" ? "var(--red)" : "var(--text2)", ...f(11, 700), letterSpacing: ".05em", cursor: g.status === "new" ? "default" : "pointer" }}>NEW</button>
+          <button onClick={() => setStatus("reviewing")} disabled={g.status === "reviewing"} style={{ padding: "10px", borderRadius: 8, background: g.status === "reviewing" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.03)", border: g.status === "reviewing" ? "1px solid var(--gold)" : "1px solid var(--seam)", color: g.status === "reviewing" ? "var(--gold)" : "var(--text2)", ...f(11, 700), letterSpacing: ".05em", cursor: g.status === "reviewing" ? "default" : "pointer" }}>REVIEWING</button>
+          <button onClick={() => setStatus("resolved")} disabled={g.status === "resolved"} style={{ padding: "10px", borderRadius: 8, background: g.status === "resolved" ? "rgba(45,122,79,0.15)" : "rgba(255,255,255,0.03)", border: g.status === "resolved" ? "1px solid var(--green)" : "1px solid var(--seam)", color: g.status === "resolved" ? "var(--green)" : "var(--text2)", ...f(11, 700), letterSpacing: ".05em", cursor: g.status === "resolved" ? "default" : "pointer" }}>RESOLVED</button>
+        </div>
+        <button onClick={handleDelete} style={{ padding: "10px", borderRadius: 8, background: "rgba(192,57,43,0.1)", border: "1px solid rgba(192,57,43,0.3)", color: "var(--red)", ...f(11, 700), letterSpacing: ".05em", cursor: "pointer" }}>DELETE GRIEVANCE</button>
+      </div>
     </div>
   );
 }

@@ -11,12 +11,16 @@ export default function AdminLanding({ ctx }) {
     isSteward,
     isSuper,
     bannedUsers,
+    grievances,
     tileStyle,
     tileIconStyle,
   } = ctx;
 
+  const newGrievances = (grievances || []).filter(g => g.status === "new");
+
   const needsAttention = [];
   if (pendingMembers.length > 0) needsAttention.push({ icon: "users", title: `${pendingMembers.length} member request${pendingMembers.length > 1 ? "s" : ""} waiting`, sub: "Tap to approve or deny", action: () => setAdminSection("useradmin"), color: "#c0392b", bg: "rgba(192,57,43,0.08)", border: "rgba(192,57,43,0.2)" });
+  if (newGrievances.length > 0) needsAttention.push({ icon: "alert", title: `${newGrievances.length} new grievance${newGrievances.length > 1 ? "s" : ""}`, sub: "Tap to review", action: () => setAdminSection("grievances"), color: "#c0392b", bg: "rgba(192,57,43,0.08)", border: "rgba(192,57,43,0.2)" });
 
   // ── STEWARD LIMITED VIEW ──
   if (isSteward) {
@@ -123,6 +127,7 @@ export default function AdminLanding({ ctx }) {
       {/* Officer Actions — single unified grid */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         {[
+          { icon: "alert", label: (grievances && grievances.filter(g => g.status === "new").length > 0) ? `Grievances (${grievances.filter(g => g.status === "new").length})` : "Grievances", action: () => setAdminSection("grievances") },
           { icon: "bell", label: "Post Announcement", action: () => setAdminSection("announcements") },
           { icon: "notes", label: "Post Minutes", action: () => setAdminSection("minutes") },
           { icon: "file", label: "Upload Document", action: () => setAdminSection("documents") },

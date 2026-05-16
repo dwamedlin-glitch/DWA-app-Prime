@@ -1,6 +1,6 @@
 /* DWA v1.5.0 */
 import { useState, useEffect, useRef } from "react";
-import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, uploadDocumentFile, uploadFloorPhoto, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority, saveAdminEmails as fbSaveAdminEmails, loadAdminEmails as fbLoadAdminEmails, registerUser, loginUser, logoutUser, onAuthChange, saveUserProfile, getUserProfile, subscribeToPendingMembers, approveMember, denyMember, subscribeToApprovedMembers, updateUserRole, deleteUserProfile, sendPasswordResetToUser } from "../lib/firebase";
+import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, uploadDocumentFile, uploadFloorPhoto, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority, saveAdminEmails as fbSaveAdminEmails, loadAdminEmails as fbLoadAdminEmails, saveGrievance as fbSaveGrievance, subscribeToGrievances, updateGrievanceStatus, deleteGrievance, registerUser, loginUser, logoutUser, onAuthChange, saveUserProfile, getUserProfile, subscribeToPendingMembers, approveMember, denyMember, subscribeToApprovedMembers, updateUserRole, deleteUserProfile, sendPasswordResetToUser } from "../lib/firebase";
 import { getApp } from "firebase/app";
 import { getFirestore, doc, updateDoc } from "firebase/firestore";
 import ProfilePage from "./ProfilePage";
@@ -110,6 +110,7 @@ export default function DWAApp() {
   const SESSION_WARNING_MS = 13 * 60 * 1000; // warn at 13 min
   const APP_VERSION = "1.5.0";
   const [myGrievances] = useState([]);
+  const [grievances, setGrievances] = useState([]); // all grievances (officers only see these)
   const [docSearch, setDocSearch] = useState("");
   const [docCat, setDocCat] = useState("All");
   const [announcements, setAnnouncements] = useState(ANNOUNCEMENTS);
@@ -255,6 +256,13 @@ export default function DWAApp() {
     });
     return () => { unsubscribe(); if (debounceTimer) clearTimeout(debounceTimer); };
   }, []);
+
+  // Subscribe to grievances (for officers' inbox)
+  useEffect(() => {
+    if (!hasOfficialAccess) return;
+    const unsub = subscribeToGrievances(setGrievances);
+    return () => unsub();
+  }, [hasOfficialAccess]);
 
   // When a user logs in and we have an FCM token, update the token record
   // with their uid + role so the server can target notifications by role.
@@ -595,23 +603,34 @@ export default function DWAApp() {
     if (!incidentDate || !supervisorName.trim() || !incidentTime || !description.trim()) {
       setGrievanceError(true); setShakeKey(k => k + 1); return;
     }
-    // Send grievance to API for email delivery (future: when email is wired up)
+    const grievancePayload = {
+      issueType,
+      incidentDate,
+      incidentTime,
+      incidentLocation,
+      supervisorName,
+      witnesses,
+      description,
+      remedy,
+      contractArticle,
+      priorGrievance,
+      submitterUid: currentUid || null,
+      submitterName: currentUserName || "Member",
+      submitterEmail: currentUserEmail || "",
+      submitterLocation: currentUserLocation || "",
+    };
+    // Persist to Firestore so officers can view + print it
+    try {
+      await fbSaveGrievance(grievancePayload);
+    } catch (e) {
+      console.error("Failed to save grievance:", e);
+    }
+    // Also POST to /api/grievance for future email delivery
     try {
       await fetch("/api/grievance", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          issueType,
-          incidentDate,
-          incidentTime,
-          incidentLocation,
-          supervisorName,
-          witnesses,
-          description,
-          remedy,
-          contractArticle,
-          priorGrievance,
-        }),
+        body: JSON.stringify(grievancePayload),
       });
     } catch (e) {
       // Still mark as submitted even if email fails
@@ -2079,9 +2098,9 @@ export default function DWAApp() {
           {!tabDataLoading && tab === "zoom" && <ZoomExt ctx={{ col, card, row, f, SectionIcon, zoomInfo, setToastMsg }} />}
           {!tabDataLoading && tab === "minutes" && <MinutesExt ctx={{ card, f, row, minLang, setMinLang, minutes }} />}
           {!tabDataLoading && tab === "seniority" && <SeniorityExt ctx={{ seniority, seniorityFilter, setSeniorityFilter, card, f }} />}
-          {!tabDataLoading && tab === "admin" && !adminSection && <AdminLandingExt ctx={{ card, col, f, SectionIcon, pendingMembers, setAdminSection, isSteward, isSuper, bannedUsers, tileStyle, tileIconStyle }} />}
+          {!tabDataLoading && tab === "admin" && !adminSection && <AdminLandingExt ctx={{ card, col, f, SectionIcon, pendingMembers, setAdminSection, isSteward, isSuper, bannedUsers, grievances, tileStyle, tileIconStyle }} />}
 
-          {tab === "admin" && adminSection && <AdminSectionsExt section={adminSection} ctx={{ card, col, row, f, inp, btnGold, lbl, dropStyle, SectionIcon, Tog, isSuper, announcements, setAnnouncements, annTitle, setAnnTitle, annBody, setAnnBody, annUrgent, setAnnUrgent, annPosted, translating, setTranslating, editAnnId, setEditAnnId, postAnn, saveAnnouncements, seniority, setSeniority, editSenId, setEditSenId, newSenName, setNewSenName, newSenDate, setNewSenDate, newSenLocation, setNewSenLocation, senError, setSenError, saveSeniorityFn, pendingMembers, memberEmails, setMemberEmails, approveMember, denyMember, editMeeting, setEditMeeting, setNextMeeting, saveMeetingInfo, zoomInfo, editZoom, setEditZoom, setZoomInfo, saveZoomInfoFn, minutes, setMinutes, newMinTitle, setNewMinTitle, newMinDate, setNewMinDate, newMinSummary, setNewMinSummary, editMinId, setEditMinId, saveMinutesFn, documents, setDocuments, newDocFile, setNewDocFile, newDocName, setNewDocName, newDocCat, setNewDocCat, newDocDesc, setNewDocDesc, docUploadDrag, setDocUploadDrag, newDocUploading, setNewDocUploading, saveDocuments, uploadDocumentFile, stewardsData, setStewardsData, newContactName, setNewContactName, newContactPhone, setNewContactPhone, newContactDept, setNewContactDept, newContactTitle, setNewContactTitle, editContactId, setEditContactId, saveStewards, allApprovedUsers, userAdminSearch, setUserAdminSearch, setProfileUserId, setShowProfile, adminEmails, setAdminEmails, updateUserRole, deleteUserProfile, sendPasswordResetToUser, bannedUsers, handleUnbanUser, formatFloorTime, SUPER_ADMIN_EMAIL, newAdminEmail, setNewAdminEmail, adminMgmtError, setAdminMgmtError, newStewardName, setNewStewardName, newStewardDept, setNewStewardDept, newStewardPhone, setNewStewardPhone, adminSaved, saveFlash, setAdminSection, setConfirmModal, setToastMsg, pushToken: push.token }} />}
+          {tab === "admin" && adminSection && <AdminSectionsExt section={adminSection} ctx={{ card, col, row, f, inp, btnGold, lbl, dropStyle, SectionIcon, Tog, isSuper, announcements, setAnnouncements, annTitle, setAnnTitle, annBody, setAnnBody, annUrgent, setAnnUrgent, annPosted, translating, setTranslating, editAnnId, setEditAnnId, postAnn, saveAnnouncements, seniority, setSeniority, editSenId, setEditSenId, newSenName, setNewSenName, newSenDate, setNewSenDate, newSenLocation, setNewSenLocation, senError, setSenError, saveSeniorityFn, pendingMembers, memberEmails, setMemberEmails, approveMember, denyMember, editMeeting, setEditMeeting, setNextMeeting, saveMeetingInfo, zoomInfo, editZoom, setEditZoom, setZoomInfo, saveZoomInfoFn, minutes, setMinutes, newMinTitle, setNewMinTitle, newMinDate, setNewMinDate, newMinSummary, setNewMinSummary, editMinId, setEditMinId, saveMinutesFn, documents, setDocuments, newDocFile, setNewDocFile, newDocName, setNewDocName, newDocCat, setNewDocCat, newDocDesc, setNewDocDesc, docUploadDrag, setDocUploadDrag, newDocUploading, setNewDocUploading, saveDocuments, uploadDocumentFile, stewardsData, setStewardsData, newContactName, setNewContactName, newContactPhone, setNewContactPhone, newContactDept, setNewContactDept, newContactTitle, setNewContactTitle, editContactId, setEditContactId, saveStewards, allApprovedUsers, userAdminSearch, setUserAdminSearch, setProfileUserId, setShowProfile, adminEmails, setAdminEmails, updateUserRole, deleteUserProfile, sendPasswordResetToUser, bannedUsers, handleUnbanUser, formatFloorTime, SUPER_ADMIN_EMAIL, newAdminEmail, setNewAdminEmail, adminMgmtError, setAdminMgmtError, newStewardName, setNewStewardName, newStewardDept, setNewStewardDept, newStewardPhone, setNewStewardPhone, adminSaved, saveFlash, setAdminSection, setConfirmModal, setToastMsg, pushToken: push.token, grievances, updateGrievanceStatus, deleteGrievance }} />}
         </div>
 
         {/* Bottom tab bar */}
