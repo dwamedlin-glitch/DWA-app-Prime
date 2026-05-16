@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   try {
-    const { title, body, type, url, tokens } = req.body;
+    const { title, body, type, url, tokens, targetRole } = req.body;
     if (!title || !body || !type) return res.status(400).json({ error: "title, body, type required" });
 
     const notification = { title, body };
@@ -16,8 +16,16 @@ export default async function handler(req, res) {
     if (allTokens.length === 0) {
       const snapshot = await adminDb.collection("fcm_tokens").get();
       snapshot.forEach(doc => {
-        const t = doc.data().token;
-        if (t) allTokens.push(t);
+        const d = doc.data();
+        const t = d.token;
+        if (!t) return;
+        // Optional role filter: "officer" → super/officer/admin, "steward" → stewards too
+        if (targetRole && targetRole !== "all") {
+          const role = (d.role || "member").toLowerCase();
+          if (targetRole === "officer" && !["officer", "admin", "super"].includes(role)) return;
+          if (targetRole === "steward" && !["steward", "officer", "admin", "super"].includes(role)) return;
+        }
+        allTokens.push(t);
       });
     }
 

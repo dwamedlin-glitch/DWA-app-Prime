@@ -256,6 +256,17 @@ export default function DWAApp() {
     return () => { unsubscribe(); if (debounceTimer) clearTimeout(debounceTimer); };
   }, []);
 
+  // When a user logs in and we have an FCM token, update the token record
+  // with their uid + role so the server can target notifications by role.
+  useEffect(() => {
+    if (!push.token || !currentUid) return;
+    fetch("/api/notifications/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: push.token, userId: currentUid, role }),
+    }).catch(e => console.error("Failed to update token role:", e));
+  }, [push.token, currentUid, role]);
+
   // Admin emails: load once from Firestore on mount, then auto-persist on change
   const adminEmailsLoadedRef = useRef(false);
   useEffect(() => {
@@ -584,7 +595,7 @@ export default function DWAApp() {
     if (!incidentDate || !supervisorName.trim() || !incidentTime || !description.trim()) {
       setGrievanceError(true); setShakeKey(k => k + 1); return;
     }
-    // Send grievance to API for email delivery
+    // Send grievance to API for email delivery (future: when email is wired up)
     try {
       await fetch("/api/grievance", {
         method: "POST",
@@ -604,6 +615,24 @@ export default function DWAApp() {
       });
     } catch (e) {
       // Still mark as submitted even if email fails
+    }
+    // Notify officers in-app (push notification) so they see the new grievance immediately
+    try {
+      const who = currentUserName || currentUserEmail || "A member";
+      const summary = description.length > 100 ? description.slice(0, 100) + "…" : description;
+      await fetch("/api/notifications/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "New Grievance Submitted",
+          body: `${who}${issueType ? " · " + issueType : ""} — ${summary}`,
+          type: "grievance",
+          url: "/",
+          targetRole: "officer",
+        }),
+      });
+    } catch (e) {
+      console.error("Failed to notify officers of grievance:", e);
     }
     setGrievanceSubmitted(true);
   };
