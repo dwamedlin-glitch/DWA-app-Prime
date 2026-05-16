@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { getApp } from "firebase/app";
-import { getFirestore, doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { getFirestore, doc, getDoc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { getAuth, deleteUser, signOut } from "firebase/auth";
 
 // ── PROFILE PAGE ──
 // Lets members view & edit their info. Officers/admins can view all member profiles.
@@ -105,6 +105,10 @@ export default function ProfilePage({ onBack, userId }) {
   const [state, setState] = useState("");
   const [zip, setZip] = useState("");
 
+  // Delete account confirmation
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     loadProfile();
   }, [userId]);
@@ -158,6 +162,35 @@ export default function ProfilePage({ onBack, userId }) {
       setFlash({ type: "error", msg: "Failed to save. Try again." });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setDeleting(true);
+    setFlash(null);
+    try {
+      const db = getFirestore(getApp());
+      const auth = getAuth(getApp());
+      const user = auth.currentUser;
+      const uid = user?.uid;
+      if (!uid) throw new Error("Not signed in.");
+      // Delete profile doc first (so admins don't see a stale record).
+      try { await deleteDoc(doc(db, "user_profiles", uid)); } catch (e) { /* may not exist */ }
+      // Then delete the auth account itself.
+      await deleteUser(user);
+      // Force sign-out (deleteUser usually does this, but be defensive).
+      try { await signOut(auth); } catch {}
+      // Reload to flush all in-memory state and bounce to the login screen.
+      window.location.reload();
+    } catch (e) {
+      console.error("[Profile] Delete error:", e);
+      setDeleting(false);
+      if (e.code === "auth/requires-recent-login") {
+        setFlash({ type: "error", msg: "For security, please sign out and back in, then try again." });
+      } else {
+        setFlash({ type: "error", msg: "Failed to delete account: " + (e.message || "Try again.") });
+      }
+      setConfirmDelete(false);
     }
   }
 
@@ -280,6 +313,61 @@ export default function ProfilePage({ onBack, userId }) {
         >
           {saving ? "Saving..." : "Save Changes"}
         </button>}
+
+        {/* Danger Zone — own profile only */}
+        {!readOnly && (
+          <div style={{ marginTop: 40, paddingTop: 20, borderTop: `1px solid rgba(255,68,68,0.2)` }}>
+            <div style={{ ...styles.sectionTitle, color: RED, borderBottom: `1px solid rgba(255,68,68,0.2)` }}>Danger Zone</div>
+            {!confirmDelete ? (
+              <>
+                <div style={{ ...f(12), color: TEXT_DIM, marginBottom: 12, lineHeight: 1.5 }}>
+                  Permanently remove your account and profile from the app. This cannot be undone — you'll need to request access again to come back.
+                </div>
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  style={{
+                    width: "100%", padding: "12px", borderRadius: 8,
+                    background: "rgba(255,68,68,0.1)", border: `1px solid rgba(255,68,68,0.4)`,
+                    color: RED, ...f(13, 700), letterSpacing: ".08em", textTransform: "uppercase", cursor: "pointer",
+                  }}
+                >
+                  Delete My Account
+                </button>
+              </>
+            ) : (
+              <div style={{ background: "rgba(255,68,68,0.08)", border: `1px solid rgba(255,68,68,0.3)`, borderRadius: 8, padding: 16 }}>
+                <div style={{ ...f(13, 700), color: RED, marginBottom: 6 }}>Are you sure?</div>
+                <div style={{ ...f(12), color: TEXT, marginBottom: 14, lineHeight: 1.5 }}>
+                  Your profile and login will be deleted permanently. The Floor posts and other content you've created will remain visible to the union.
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    disabled={deleting}
+                    style={{
+                      flex: 1, padding: "12px", borderRadius: 8,
+                      background: "rgba(255,255,255,0.04)", border: `1px solid ${SEAM}`,
+                      color: TEXT, ...f(13, 600), cursor: deleting ? "not-allowed" : "pointer", opacity: deleting ? 0.5 : 1,
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={deleting}
+                    style={{
+                      flex: 1, padding: "12px", borderRadius: 8,
+                      background: RED, border: `1px solid ${RED}`,
+                      color: "#fff", ...f(13, 700), letterSpacing: ".05em", cursor: deleting ? "not-allowed" : "pointer", opacity: deleting ? 0.7 : 1,
+                    }}
+                  >
+                    {deleting ? "Deleting…" : "Yes, delete"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div style={{ height: 40 }} />
       </div>
