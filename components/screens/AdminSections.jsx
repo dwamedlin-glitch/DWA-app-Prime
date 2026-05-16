@@ -827,17 +827,53 @@ function UserAdminPanel({ ctx }) {
           </div>
           <div style={{ ...card({ padding: "16px" }), ...col(8) }}>
             <div style={{ ...f(12, 700), color: "var(--gold)", marginBottom: 8 }}>Current Officers</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--seam)" }}>
-              <div style={{ flex: 1, ...f(13, 400), color: "var(--text)" }}>{SUPER_ADMIN_EMAIL}</div>
-              <div style={{ ...f(9, 700), color: "#1a0f00", background: "linear-gradient(135deg,#a06b18,#c9922a)", padding: "3px 8px", borderRadius: 6 }}>SUPER</div>
-            </div>
-            {adminEmails.map(em => (
-              <div key={em} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--seam)" }}>
-                <div style={{ flex: 1, ...f(13, 400), color: "var(--text)" }}>{em}</div>
-                <div style={{ ...f(9, 700), color: "var(--gold)", background: "rgba(201,146,42,0.1)", padding: "3px 8px", borderRadius: 6 }}>OFFICER</div>
-                <button onClick={() => { setConfirmModal({ title: `Demote ${em}?`, message: "They will no longer have officer privileges.", danger: true, onConfirm: () => { setAdminEmails(prev => prev.filter(a => a !== em)); setToastMsg({ message: `${em} demoted from officer` }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>DEMOTE</button>
-              </div>
-            ))}
+            {(() => {
+              // Build unified officers list from BOTH sources:
+              //   1. Users with role === "officer" or "super" in their profile
+              //   2. Emails in adminEmails (legacy whitelist) not already covered
+              const rows = [];
+              const seen = new Set();
+              // Super admin first
+              rows.push({ key: "super", email: SUPER_ADMIN_EMAIL, name: "Super Admin", role: "super", uid: null });
+              seen.add(SUPER_ADMIN_EMAIL.toLowerCase());
+              // Profile-based officers (registered users)
+              (allApprovedUsers || []).forEach(u => {
+                const em = (u.email || "").toLowerCase();
+                if (!em || seen.has(em)) return;
+                if (u.role === "officer" || u.role === "super") {
+                  rows.push({ key: u.uid, email: u.email, name: u.name || u.email, role: u.role, uid: u.uid });
+                  seen.add(em);
+                }
+              });
+              // Whitelist emails (no profile yet, but pre-authorized)
+              (adminEmails || []).forEach(em => {
+                const lower = em.toLowerCase();
+                if (seen.has(lower)) return;
+                rows.push({ key: em, email: em, name: em, role: "officer", uid: null, whitelistOnly: true });
+                seen.add(lower);
+              });
+              return rows.map(r => (
+                <div key={r.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--seam)" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ ...f(13, 600), color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
+                    {r.name !== r.email && <div style={{ ...f(11, 400), color: "var(--text3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.email}</div>}
+                    {r.whitelistOnly && <div style={{ ...f(10, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>Pending first login</div>}
+                  </div>
+                  {r.role === "super"
+                    ? <div style={{ ...f(9, 700), color: "#1a0f00", background: "linear-gradient(135deg,#a06b18,#c9922a)", padding: "3px 8px", borderRadius: 6 }}>SUPER</div>
+                    : <div style={{ ...f(9, 700), color: "var(--gold)", background: "rgba(201,146,42,0.1)", padding: "3px 8px", borderRadius: 6 }}>OFFICER</div>}
+                  {r.role !== "super" && (
+                    <button onClick={() => { setConfirmModal({ title: `Demote ${r.name}?`, message: "They will no longer have officer privileges.", danger: true, onConfirm: async () => {
+                      if (r.uid) {
+                        try { await updateUserRole(r.uid, "member"); } catch (e) { console.error("Demote role failed:", e); }
+                      }
+                      setAdminEmails(prev => prev.filter(a => a.toLowerCase() !== r.email.toLowerCase()));
+                      setToastMsg({ message: `${r.name} demoted from officer` });
+                    } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer", flexShrink: 0 }}>DEMOTE</button>
+                  )}
+                </div>
+              ));
+            })()}
           </div>
 
           {/* Stewards roster */}
