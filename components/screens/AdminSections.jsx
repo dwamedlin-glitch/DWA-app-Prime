@@ -1005,6 +1005,11 @@ function GrievancesPanel({ ctx }) {
             </div>
             {g.issueType && <div style={{ ...f(11, 700), color: "var(--gold)", letterSpacing: ".05em" }}>{g.issueType}</div>}
             <div style={{ ...f(12, 400, 'serif'), color: "var(--text2)", lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{g.description}</div>
+            {(g.notes || []).length > 0 && (
+              <div style={{ ...f(10, 600), color: "var(--text3)", letterSpacing: ".05em" }}>
+                💬 {(g.notes || []).length} note{(g.notes || []).length === 1 ? "" : "s"}
+              </div>
+            )}
           </div>
         ))
       )}
@@ -1013,10 +1018,48 @@ function GrievancesPanel({ ctx }) {
 }
 
 function GrievanceDetail({ ctx, grievance, onBack, fmtDate, statusColor, statusBg }) {
-  const { card, col, f, btnGold, btnOutline, updateGrievanceStatus, setConfirmModal, setToastMsg } = ctx;
+  const { card, col, f, inp, btnGold, btnOutline, updateGrievanceStatus, addGrievanceNote, removeGrievanceNote, setConfirmModal, setToastMsg, currentUserName, currentUid } = ctx;
   const g = grievance;
   // Backward-compat: older docs stored signature under contractArticle
   const signature = g.signature || g.contractArticle || "";
+  const notes = (g.notes || []).slice().sort((a, b) => (b.time || 0) - (a.time || 0));
+
+  const [noteText, setNoteText] = React.useState("");
+  const [addingNote, setAddingNote] = React.useState(false);
+
+  const handleAddNote = async () => {
+    const text = noteText.trim();
+    if (!text) return;
+    setAddingNote(true);
+    try {
+      const note = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+        text,
+        author: currentUserName || "Officer",
+        authorUid: currentUid || null,
+        time: Date.now(),
+      };
+      await addGrievanceNote(g.id, note);
+      setNoteText("");
+    } catch (e) {
+      console.error("Failed to add note:", e);
+      setToastMsg && setToastMsg({ message: "Failed to add note." });
+    } finally {
+      setAddingNote(false);
+    }
+  };
+
+  const handleRemoveNote = (note) => {
+    setConfirmModal({
+      title: "Delete this note?",
+      message: "This will permanently remove the note from the grievance record.",
+      danger: true,
+      onConfirm: async () => {
+        try { await removeGrievanceNote(g.id, note); setToastMsg && setToastMsg({ message: "Note removed" }); }
+        catch (e) { setToastMsg && setToastMsg({ message: "Failed to remove note." }); }
+      }
+    });
+  };
 
   const handlePrint = () => {
     const printWindow = window.open("", "_blank", "width=850,height=1100");
@@ -1055,6 +1098,8 @@ function GrievanceDetail({ ctx, grievance, onBack, fmtDate, statusColor, statusB
 
       <h2>Signature</h2>
       <div class="sig">${esc(signature) || "—"}</div>
+
+      ${notes.length > 0 ? `<h2>Officer Notes (${notes.length})</h2>` + notes.map(n => `<div class="desc" style="margin-bottom:8px;"><div style="font-size:11px;color:#666;margin-bottom:4px;"><strong>${esc(n.author)}</strong> · ${esc(fmtDate(n.time))}</div>${esc(n.text)}</div>`).join("") : ""}
 
       <div class="footer">DWA Union · dwaunion.com · Reference ID: ${esc(g.id)}</div>
       <script>window.onload=()=>{window.print();};</script>
@@ -1121,6 +1166,47 @@ function GrievanceDetail({ ctx, grievance, onBack, fmtDate, statusColor, statusB
           <div style={{ ...f(10, 700), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".1em" }}>Signature</div>
           <div style={{ fontFamily: "'Brush Script MT', cursive", fontSize: 22, color: "var(--cream)", paddingTop: 2 }}>{signature || "—"}</div>
         </div>
+      </div>
+
+      {/* Notes thread */}
+      <div style={{ ...card({ padding: "14px" }), ...col(10) }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ ...f(11, 700), color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".1em" }}>Notes</div>
+          <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>{notes.length}</div>
+        </div>
+        <div style={{ ...col(4) }}>
+          <textarea
+            value={noteText}
+            onChange={e => setNoteText(e.target.value)}
+            placeholder="Log a solution, conversation, decision, or action item…"
+            style={{ ...inp(), width: "100%", minHeight: 60, resize: "vertical", lineHeight: 1.5 }}
+          />
+          <button
+            onClick={handleAddNote}
+            disabled={addingNote || !noteText.trim()}
+            style={{ ...btnGold(!noteText.trim()), padding: "10px", ...f(11, 700), letterSpacing: ".08em", opacity: addingNote ? 0.6 : 1 }}
+          >{addingNote ? "ADDING…" : "ADD NOTE"}</button>
+        </div>
+        {notes.length === 0 ? (
+          <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", textAlign: "center", padding: "10px 0" }}>No notes yet. Add the first one above.</div>
+        ) : (
+          <div style={{ ...col(6) }}>
+            {notes.map(n => (
+              <div key={n.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--seam)", borderRadius: 8, padding: "10px 12px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", minWidth: 0 }}>
+                    <span style={{ ...f(12, 700), color: "var(--cream)" }}>{n.author || "Officer"}</span>
+                    <span style={{ ...f(10, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>· {fmtDate(n.time)}</span>
+                  </div>
+                  {(n.authorUid === currentUid || !n.authorUid) && (
+                    <button onClick={() => handleRemoveNote(n)} style={{ ...f(10, 700), color: "var(--red)", background: "none", border: "none", cursor: "pointer", padding: 2 }}>×</button>
+                  )}
+                </div>
+                <div style={{ ...f(13, 400, 'serif'), color: "var(--text)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{n.text}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Actions */}
