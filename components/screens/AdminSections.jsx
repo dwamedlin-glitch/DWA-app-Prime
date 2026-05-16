@@ -938,8 +938,10 @@ function GrievancesPanel({ ctx }) {
     setAdminSection, setConfirmModal, setToastMsg,
   } = ctx;
 
-  const [selected, setSelected] = React.useState(null);
+  const [selectedId, setSelectedId] = React.useState(null);
   const [filter, setFilter] = React.useState("active"); // active | new | reviewing | resolved | archived
+  // Look up the live grievance each render so status/notes stay in sync with Firestore.
+  const selected = selectedId ? (grievances || []).find(g => g.id === selectedId) : null;
 
   const list = (grievances || []).filter(g => {
     if (filter === "active") return g.status !== "archived";
@@ -962,7 +964,7 @@ function GrievancesPanel({ ctx }) {
   const statusBg = (s) => s === "new" ? "rgba(192,57,43,0.1)" : s === "reviewing" ? "rgba(201,146,42,0.1)" : s === "archived" ? "rgba(255,255,255,0.04)" : "rgba(45,122,79,0.1)";
 
   if (selected) {
-    return <GrievanceDetail ctx={ctx} grievance={selected} onBack={() => setSelected(null)} fmtDate={fmtDate} statusColor={statusColor} statusBg={statusBg} />;
+    return <GrievanceDetail ctx={ctx} grievance={selected} onBack={() => setSelectedId(null)} fmtDate={fmtDate} statusColor={statusColor} statusBg={statusBg} />;
   }
 
   return (
@@ -995,7 +997,7 @@ function GrievancesPanel({ ctx }) {
         </div>
       ) : (
         list.map(g => (
-          <div key={g.id} onClick={() => setSelected(g)} style={{ ...card({ padding: "14px", borderLeft: `3px solid ${statusColor(g.status)}` }), cursor: "pointer", ...col(6) }}>
+          <div key={g.id} onClick={() => setSelectedId(g.id)} style={{ ...card({ padding: "14px", borderLeft: `3px solid ${statusColor(g.status)}` }), cursor: "pointer", ...col(6) }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ ...f(14, 600), color: "var(--cream)" }}>{g.submitterName || "Member"}</div>
