@@ -201,6 +201,28 @@ export default function AdminSections({ section, ctx }) {
           ))}
           {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>✓ Saved!</div>}
           <button style={btnGold()} onClick={async () => { const info = { ...editMeeting }; setNextMeeting(info); saveMeetingInfo(info); saveFlash(() => {}); try { await fetch('/api/notifications/meeting-updated', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: info.title || 'Union Meeting', date: info.date, time: info.time, location: info.location || '', zoomId: zoomInfo?.id || '', zoomPasscode: zoomInfo?.passcode || '', zoomLink: zoomInfo?.link || '' }) }); setToastMsg({ message: "Meeting saved · members notified" }); } catch(e) { console.log('Meeting notification failed:', e); setToastMsg({ message: "Meeting saved (notification failed)" }); } }}>SAVE MEETING INFO</button>
+          <button
+            onClick={async () => {
+              const info = { ...editMeeting };
+              if (!info.date || !info.time) { setToastMsg({ message: "Set date and time first" }); return; }
+              try {
+                const r = await fetch('/api/notifications/test-meeting-cascade', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: info.title || 'Union Meeting', date: info.date, time: info.time, location: info.location || '', zoomId: zoomInfo?.meetingId || zoomInfo?.id || '', zoomPasscode: zoomInfo?.passcode || '' }) });
+                const data = await r.json();
+                if (data.success) {
+                  const total = (data.results?.oneWeek?.sent || 0) + (data.results?.oneDay?.sent || 0) + (data.results?.dayOf?.sent || 0);
+                  setToastMsg({ message: `Test sent · 3 notifications × ${data.results?.oneWeek?.sent || 0} devices` });
+                } else {
+                  setToastMsg({ message: data.error || "Test failed" });
+                }
+              } catch(e) {
+                console.error('Test cascade failed:', e);
+                setToastMsg({ message: "Test failed — see console" });
+              }
+            }}
+            style={{ padding: "10px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid var(--seam)", color: "var(--cream)", ...f(11, 700), letterSpacing: ".08em", cursor: "pointer", marginTop: 4 }}
+          >
+            TEST REMINDER CASCADE (sends all 3 reminders to all devices)
+          </button>
         </div>
         <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>Preview: {editMeeting.title} · {editMeeting.date} · {editMeeting.location}</div>
       </div>
