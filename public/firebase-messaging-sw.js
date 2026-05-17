@@ -32,7 +32,16 @@ messaging.onBackgroundMessage((payload) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || "/";
+  // Pass notification context as URL params so the app can route + show a banner
+  // even before the user is signed in.
+  const data = event.notification.data || {};
+  const title = event.notification.title || data.title || "";
+  const params = new URLSearchParams();
+  params.set("notif", "1");
+  if (data.type) params.set("type", data.type);
+  if (title) params.set("t", title);
+  const targetPath = data.url && data.url !== "/" ? data.url : "/";
+  const url = targetPath + (targetPath.includes("?") ? "&" : "?") + params.toString();
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       for (const client of list) {

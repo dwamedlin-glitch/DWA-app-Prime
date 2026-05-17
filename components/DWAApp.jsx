@@ -163,6 +163,18 @@ export default function DWAApp() {
   const [editContactId, setEditContactId] = useState(null);
   const [allApprovedUsers, setAllApprovedUsers] = useState([]);
   const [userAdminSearch, setUserAdminSearch] = useState("");
+
+  // Pending notification intent: when the app loads from a tapped push, we stash
+  // what triggered it so we can (a) show a context banner on the login screen and
+  // (b) jump to the relevant screen after sign-in.
+  const [pendingNotif, setPendingNotif] = useState(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("notif") !== "1") return null;
+      return { type: p.get("type") || "general", title: p.get("t") || "" };
+    } catch { return null; }
+  });
   const [newStewardTitle, setNewStewardTitle] = useState("Shop Steward");
 
   // ── THE FLOOR (Discussion Forum) ──
@@ -263,6 +275,34 @@ export default function DWAApp() {
     const unsub = subscribeToGrievances(setGrievances);
     return () => unsub();
   }, [hasOfficialAccess]);
+
+  // Once the user signs in, route them to the screen their notification pointed to,
+  // then clean up the URL so refreshes don't re-trigger the routing.
+  useEffect(() => {
+    if (!loggedIn || !pendingNotif) return;
+    const t = pendingNotif.type;
+    // Officers see admin sections for action-required types; members see public screens.
+    if (hasOfficialAccess && t === "grievance") {
+      setTab("admin"); setAdminSection("grievances");
+    } else if (hasOfficialAccess && t === "member_request") {
+      setTab("admin"); setAdminSection("useradmin");
+    } else if (t === "announcement") {
+      setTab("announcements");
+    } else if (t === "meeting") {
+      setTab("home"); // next meeting card lives on home
+    } else if (t === "vote") {
+      setTab("announcements");
+    }
+    // Open the notification inbox so they can see context
+    setNotifInboxOpen(true);
+    // Clean URL params so reload doesn't re-route
+    try {
+      const u = new URL(window.location.href);
+      ["notif", "type", "t"].forEach(k => u.searchParams.delete(k));
+      window.history.replaceState({}, "", u.toString());
+    } catch {}
+    setPendingNotif(null);
+  }, [loggedIn, pendingNotif, hasOfficialAccess]);
 
   // When a user logs in and we have an FCM token, update the token record
   // with their uid + role so the server can target notifications by role.
@@ -1203,6 +1243,20 @@ export default function DWAApp() {
 
           {authView === "login" && (
             <>
+              {pendingNotif && (() => {
+                const icons = { announcement: "📢", meeting: "📅", vote: "🗳️", grievance: "📋", general: "🔔" };
+                const labels = { announcement: "Announcement", meeting: "Meeting Update", vote: "Vote", grievance: "Grievance", general: "Notification" };
+                return (
+                  <div style={{ width: "100%", marginBottom: 18, background: "rgba(201,146,42,0.08)", border: "1px solid rgba(201,146,42,0.3)", borderLeft: "3px solid var(--gold)", borderRadius: 10, padding: "12px 14px", display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <div style={{ fontSize: 22, lineHeight: 1, marginTop: 2 }}>{icons[pendingNotif.type] || icons.general}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ ...f(10, 700), color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".1em" }}>{labels[pendingNotif.type] || "Notification"}</div>
+                      <div style={{ ...f(13, 600), color: "var(--cream)", marginTop: 2 }}>{pendingNotif.title || "You have a new update"}</div>
+                      <div style={{ ...f(11, 400, 'serif'), color: "var(--text2)", marginTop: 4, fontStyle: "italic" }}>Sign in to view it</div>
+                    </div>
+                  </div>
+                );
+              })()}
               <div style={{ width: "100%", ...col(14) }}>
                 <div style={col(6)}>
                   <label style={lbl}>Email Address</label>
