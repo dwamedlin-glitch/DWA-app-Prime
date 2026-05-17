@@ -86,7 +86,16 @@ export default function DWAApp() {
   const [grievanceSubmitted, setGrievanceSubmitted] = useState(false);
   const [activeArticle, setActiveArticle] = useState(null);
   const [activeBylawArticle, setActiveBylawArticle] = useState(null);
-  const [lang, setLang] = useState("en");
+  // Language preference for translatable content (Announcements, Minutes). Persists
+  // across visits so a Spanish-speaking member keeps Spanish without re-toggling each time.
+  const [lang, _setLang] = useState(() => {
+    if (typeof window === "undefined") return "en";
+    try { return localStorage.getItem("dwa-lang") || "en"; } catch { return "en"; }
+  });
+  const setLang = (l) => {
+    _setLang(l);
+    try { localStorage.setItem("dwa-lang", l); } catch {}
+  };
   const [incidentDate, setIncidentDate] = useState("");
   const [witnesses, setWitnesses] = useState("");
   const [description, setDescription] = useState("");
@@ -1113,17 +1122,6 @@ export default function DWAApp() {
                   }
                 }}
               />
-            </div>
-            <div style={{ ...row("center", 0), justifyContent: "space-between", padding: "16px 0", borderBottom: "1px solid var(--seam)" }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ ...f(14, 600), color: "var(--text)" }}>Language</div>
-                <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginTop: 2 }}>Switch between English and Spanish</div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 0, borderRadius: 8, overflow: "hidden", border: "1px solid var(--seam)" }}>
-                {["en", "es"].map(l => (
-                  <div key={l} onClick={() => setLang(l)} style={{ padding: "6px 14px", background: lang === l ? "var(--gold)" : "var(--leather2)", color: lang === l ? "#1a0f00" : "var(--text3)", ...f(12, 700), cursor: "pointer", textTransform: "uppercase" }}>{l}</div>
-                ))}
-              </div>
             </div>
           </div>
           <div style={{ marginTop: 24 }}>
