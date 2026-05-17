@@ -931,21 +931,47 @@ function UserAdminPanel({ ctx }) {
             }}>ADD TO ROSTER</button>
           </div>
           <div style={{ ...card({ padding: "16px" }), ...col(8) }}>
-            <div style={{ ...f(12, 700), color: "var(--gold)", marginBottom: 8 }}>Stewards Roster ({stewardsData.length})</div>
-            {stewardsData.length === 0 && <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>No stewards on the roster.</div>}
-            {stewardsData.map(s => (
-              <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--seam)" }}>
-                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#2a1f0a", border: "1px solid #6b5a2e", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ ...f(10, 600), color: "#c4a44e" }}>{s.name.split(" ").map(n => n[0]).join("").slice(0, 2)}</span>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ ...f(13, 600), color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
-                  <div style={{ ...f(10, 400, "serif"), color: "var(--text3)", fontStyle: "italic" }}>{s.dept || "—"}{s.phone ? ` · ${s.phone}` : ""}</div>
-                </div>
-                <div style={{ ...f(9, 700), color: "#e8b84b", background: "#2a1f0a", padding: "3px 8px", borderRadius: 6 }}>STEWARD</div>
-                <button onClick={() => { setConfirmModal({ title: `Remove ${s.name} from roster?`, message: `${s.name} will be removed from the public stewards roster.`, danger: true, onConfirm: () => { const removed = s; setStewardsData(prev => { const updated = prev.filter(x => x.id !== s.id); saveStewards(updated); return updated; }); setToastMsg({ message: `${s.name} removed from roster`, onUndo: () => { setStewardsData(prev => { const restored = [...prev, removed]; saveStewards(restored); return restored; }); } }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer", flexShrink: 0 }}>REMOVE</button>
-              </div>
-            ))}
+            {(() => {
+              // Unified stewards list — same pattern as Officers:
+              //   1. Approved users with role === "steward" (real app accounts)
+              //   2. Plus manually-added roster entries (contact-only)
+              const rows = [];
+              const seenNames = new Set();
+              (allApprovedUsers || []).forEach(u => {
+                if (u.role === "steward") {
+                  const key = "user-" + u.uid;
+                  rows.push({ key, source: "user", name: u.name || u.email, dept: u.location || "", phone: u.phone || "", uid: u.uid, email: u.email });
+                  if (u.name) seenNames.add(u.name.toLowerCase());
+                }
+              });
+              (stewardsData || []).forEach(s => {
+                if (s.name && seenNames.has(s.name.toLowerCase())) return; // dedupe
+                rows.push({ key: "roster-" + s.id, source: "roster", id: s.id, name: s.name, dept: s.dept || "", phone: s.phone || "", raw: s });
+              });
+              return (
+                <>
+                  <div style={{ ...f(12, 700), color: "var(--gold)", marginBottom: 8 }}>Stewards Roster ({rows.length})</div>
+                  {rows.length === 0 && <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>No stewards yet.</div>}
+                  {rows.map(s => (
+                    <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--seam)" }}>
+                      <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#2a1f0a", border: "1px solid #6b5a2e", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <span style={{ ...f(10, 600), color: "#c4a44e" }}>{(s.name || "?").split(" ").map(n => n[0]).join("").slice(0, 2)}</span>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ ...f(13, 600), color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
+                        <div style={{ ...f(10, 400, "serif"), color: "var(--text3)", fontStyle: "italic" }}>{s.dept || "—"}{s.phone ? ` · ${s.phone}` : ""}{s.source === "user" ? " · has app account" : ""}</div>
+                      </div>
+                      <div style={{ ...f(9, 700), color: "#e8b84b", background: "#2a1f0a", padding: "3px 8px", borderRadius: 6 }}>STEWARD</div>
+                      {s.source === "roster" ? (
+                        <button onClick={() => { setConfirmModal({ title: `Remove ${s.name} from roster?`, message: `${s.name} will be removed from the public stewards roster.`, danger: true, onConfirm: () => { const removed = s.raw; setStewardsData(prev => { const updated = prev.filter(x => x.id !== s.id); saveStewards(updated); return updated; }); setToastMsg({ message: `${s.name} removed from roster`, onUndo: () => { setStewardsData(prev => { const restored = [...prev, removed]; saveStewards(restored); return restored; }); } }); } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer", flexShrink: 0 }}>REMOVE</button>
+                      ) : (
+                        <button onClick={() => { setConfirmModal({ title: `Demote ${s.name}?`, message: "They will lose steward privileges.", danger: true, onConfirm: async () => { try { await updateUserRole(s.uid, "member"); setToastMsg({ message: `${s.name} demoted to member` }); } catch(e) { setToastMsg({ message: "Failed to demote." }); } } }); }} style={{ ...f(11, 700), color: "var(--red)", background: "none", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, padding: "5px 8px", cursor: "pointer", flexShrink: 0 }}>DEMOTE</button>
+                      )}
+                    </div>
+                  ))}
+                </>
+              );
+            })()}
           </div>
         </>
       )}
