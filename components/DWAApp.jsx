@@ -114,7 +114,8 @@ export default function DWAApp() {
   const [annUrgent, setAnnUrgent] = useState(false);
   const [annPosted, setAnnPosted] = useState(false);
   const [editAnnId, setEditAnnId] = useState(null); // null = new post, id = editing existing
-  const [annLang, setAnnLang] = useState("en"); // language toggle for announcements tab
+  // (legacy annLang state removed — Announcements now reads from the global `lang`
+  //  state below so the Settings panel + per-screen toggle stay in sync.)
   const [translating, setTranslating] = useState(false); // translation loading state
   const [minutes, setMinutes] = useState([]);
   const [notifs, setNotifs] = useState({ meetings: true, announcements: true, grievances: false });
@@ -149,7 +150,7 @@ export default function DWAApp() {
   const [newMinDate, setNewMinDate] = useState("");
   const [newMinSummary, setNewMinSummary] = useState("");
   const [editMinId, setEditMinId] = useState(null);
-  const [minLang, setMinLang] = useState("en");
+  // (legacy minLang state removed — Minutes screen now reads from the global `lang`.)
   const [newStewardName, setNewStewardName] = useState("");
   const [newStewardPhone, setNewStewardPhone] = useState("");
   const [newStewardDept, setNewStewardDept] = useState("Jersey City");
@@ -1805,8 +1806,8 @@ export default function DWAApp() {
 
     if (sub.type === "ann") {
       const a = sub.data;
-      const displayTitle = annLang === "es" && a.titleEs ? a.titleEs : a.title;
-      const displayBody = annLang === "es" && a.bodyEs ? a.bodyEs : a.body;
+      const displayTitle = lang === "es" && a.titleEs ? a.titleEs : a.title;
+      const displayBody = lang === "es" && a.bodyEs ? a.bodyEs : a.body;
       return (
         <><style>{css}</style>
           <div style={{ maxWidth: 430, margin: "0 auto", height: "100vh", minHeight: "-webkit-fill-available", display: "flex", flexDirection: "column", background: "var(--ink)" }}>
@@ -1819,13 +1820,13 @@ export default function DWAApp() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 4, background: "var(--leather3)", borderRadius: 8, padding: 4, border: "1px solid var(--seam)", flexShrink: 0 }}>
                   {["en", "es"].map(l => (
-                    <div key={l} onClick={() => setAnnLang(l)} style={{ padding: "4px 10px", borderRadius: 6, background: annLang === l ? "var(--gold)" : "transparent", color: annLang === l ? "#1a0f00" : "var(--text3)", ...f(11, 700), cursor: "pointer", textTransform: "uppercase" }}>{l}</div>
+                    <div key={l} onClick={() => setLang(l)} style={{ padding: "4px 10px", borderRadius: 6, background: lang === l ? "var(--gold)" : "transparent", color: lang === l ? "#1a0f00" : "var(--text3)", ...f(11, 700), cursor: "pointer", textTransform: "uppercase" }}>{l}</div>
                   ))}
                 </div>
               </div>
               <div className="gold-rule" />
               <div style={{ ...f(15, 400, 'serif'), color: "var(--text2)", lineHeight: 1.75, marginTop: 20, whiteSpace: "pre-wrap" }}>{displayBody}</div>
-              {annLang === "es" && !a.bodyEs && (
+              {lang === "es" && !a.bodyEs && (
                 <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", marginTop: 12 }}>Translation not available for this announcement.</div>
               )}
             </div>
@@ -2143,9 +2144,9 @@ export default function DWAApp() {
           {!tabDataLoading && tab === "theFloor" && <TheFloorExt ctx={{ card, col, row, f, inp, btnGold, SectionIcon, darkMode, floorPosts, floorLoading, floorReplyTo, setFloorReplyTo, bannedUsers, floorPhoto, setFloorPhoto, floorPhotoPreview, setFloorPhotoPreview, floorPosting, floorPostRef, floorReplyRef, floorPhotoRef, isCurrentUserBanned, currentUserName, currentUid, isAdmin, isSteward, handleFloorPost, handleFloorPhotoSelect, handleFloorReply, handleBanUser, handleFloorDelete, getInitials, formatFloorTime, RoleBadge, LocationTag, startFloorEdit, SkeletonList }} />}
           {!tabDataLoading && tab === "grievance" && <GrievanceExt ctx={{ card, col, f, inp, btnGold, btnOutline, lbl, SectionIcon, grievanceSubmitted, grievanceError, incidentDate, setIncidentDate, description, setDescription, remedy, setRemedy, witnesses, setWitnesses, contractArticle, setContractArticle, shakeKey, handleGrievance, resetGrievance }} />}
           {!tabDataLoading && tab === "documents" && <DocumentsExt ctx={{ card, col, row, f, inp, SectionIcon, documents, filteredDocs, docSearch, setDocSearch, docCat, setDocCat, allDocCategories, docFileIcon, setSub }} />}
-          {!tabDataLoading && tab === "announcements" && <AnnouncementsExt ctx={{ col, f, card, annLang, setAnnLang, announcements, setSub }} />}
+          {!tabDataLoading && tab === "announcements" && <AnnouncementsExt ctx={{ col, f, card, annLang: lang, setAnnLang: setLang, announcements, setSub }} />}
           {!tabDataLoading && tab === "zoom" && <ZoomExt ctx={{ col, card, row, f, SectionIcon, zoomInfo, nextMeeting, setToastMsg }} />}
-          {!tabDataLoading && tab === "minutes" && <MinutesExt ctx={{ card, f, row, minLang, setMinLang, minutes }} />}
+          {!tabDataLoading && tab === "minutes" && <MinutesExt ctx={{ card, f, row, minLang: lang, setMinLang: setLang, minutes }} />}
           {!tabDataLoading && tab === "seniority" && <SeniorityExt ctx={{ seniority, seniorityFilter, setSeniorityFilter, card, f }} />}
           {!tabDataLoading && tab === "admin" && !adminSection && <AdminLandingExt ctx={{ card, col, f, SectionIcon, pendingMembers, setAdminSection, isSteward, isSuper, bannedUsers, grievances, tileStyle, tileIconStyle }} />}
 
