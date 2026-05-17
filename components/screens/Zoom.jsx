@@ -20,14 +20,45 @@ export default function Zoom({ ctx }) {
       setToastMsg && setToastMsg({ message: "No upcoming meeting set yet." });
       return;
     }
-    // Try to parse "May 30, 2026" + "6:00 PM" or ISO date + 24h time
-    let start;
-    try {
-      start = new Date(nextMeeting.date + " " + (nextMeeting.time || "18:00"));
-      if (isNaN(start.getTime())) start = new Date(nextMeeting.date + "T" + (nextMeeting.time || "18:00"));
-      if (isNaN(start.getTime())) throw new Error("bad");
-    } catch {
-      setToastMsg && setToastMsg({ message: "Couldn't read meeting date." });
+    const parseFlexible = (dateRaw, timeRaw) => {
+      const rawDate = (dateRaw || "").trim();
+      const rawTime = (timeRaw || "").trim();
+      // 1) Try ISO + 24h ("2026-05-30" + "18:00")
+      let d = new Date(rawDate + "T" + (rawTime || "18:00"));
+      if (!isNaN(d.getTime())) return d;
+      // 2) Try concatenated free-text ("May 30, 2026" + "6:00 PM")
+      d = new Date(rawDate + " " + (rawTime || "6:00 PM"));
+      if (!isNaN(d.getTime())) return d;
+      // 3) Date alone, then hand-parse the time (handles "9AM", "9 AM", "9:00", "18:00")
+      let dateOnly = new Date(rawDate);
+      // Try stripping ordinals like "March 30th" -> "March 30"
+      if (isNaN(dateOnly.getTime())) {
+        const cleaned = rawDate.replace(/(\d+)(st|nd|rd|th)/i, "$1");
+        dateOnly = new Date(cleaned);
+        // If still no year, assume current year
+        if (isNaN(dateOnly.getTime())) {
+          dateOnly = new Date(cleaned + " " + new Date().getFullYear());
+        } else if (!/\d{4}/.test(rawDate)) {
+          dateOnly.setFullYear(new Date().getFullYear());
+        }
+      }
+      if (isNaN(dateOnly.getTime())) return null;
+      // Parse time piece — accept "9AM", "9 PM", "9:30AM", "18:00", "6:00 PM"
+      let hours = 18, mins = 0;
+      const m = rawTime.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i);
+      if (m) {
+        hours = parseInt(m[1], 10);
+        mins = parseInt(m[2] || "0", 10);
+        const ampm = (m[3] || "").toLowerCase();
+        if (ampm === "pm" && hours < 12) hours += 12;
+        if (ampm === "am" && hours === 12) hours = 0;
+      }
+      dateOnly.setHours(hours, mins, 0, 0);
+      return isNaN(dateOnly.getTime()) ? null : dateOnly;
+    };
+    const start = parseFlexible(nextMeeting.date, nextMeeting.time);
+    if (!start) {
+      setToastMsg && setToastMsg({ message: `Can't read date: "${nextMeeting.date}" / "${nextMeeting.time}". Try saving with the date picker.` });
       return;
     }
     const end = new Date(start.getTime() + 90 * 60 * 1000); // assume 90 min
