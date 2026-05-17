@@ -732,6 +732,7 @@ function UserAdminPanel({ ctx }) {
     setProfileUserId, setShowProfile,
     updateUserRole, deleteUserProfile, sendPasswordResetToUser,
     adminEmails, setAdminEmails,
+    bannedUsers, handleBanUser, handleUnbanUser,
     // requests tab
     pendingMembers, memberEmails, setMemberEmails,
     approveMember, denyMember,
@@ -788,8 +789,10 @@ function UserAdminPanel({ ctx }) {
           <div style={{ ...card({ padding: "14px" }) }}>
             <input style={inp()} value={userAdminSearch} onChange={e => setUserAdminSearch(e.target.value)} placeholder="Search by name or email..." />
           </div>
-          {allApprovedUsers.filter(u => { const q = userAdminSearch.toLowerCase(); return !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q); }).map(u => (
-            <div key={u.uid} style={{ ...card({ padding: "14px" }), ...col(12) }}>
+          {allApprovedUsers.filter(u => { const q = userAdminSearch.toLowerCase(); return !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q); }).map(u => {
+            const isBanned = (bannedUsers || []).some(b => (b.name || "").toLowerCase() === (u.name || "").toLowerCase());
+            return (
+            <div key={u.uid} style={{ ...card({ padding: "14px", borderLeft: isBanned ? "3px solid var(--red)" : undefined }), ...col(12) }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
                 <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#2a1f0a", border: "1px solid #6b5a2e", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <span style={{ ...f(12, 600), color: "#c4a44e" }}>{(u.name || "?").split(" ").map(n => n[0]).join("").slice(0, 2)}</span>
@@ -799,17 +802,23 @@ function UserAdminPanel({ ctx }) {
                   <div style={{ ...f(11, 400), color: "var(--text3)" }}>{u.email || "No email"}{u.phone ? ` · ${u.phone}` : ""}{u.location ? ` · ${u.location}` : ""}</div>
                 </div>
                 <div style={{ ...f(9, 700), color: u.role === "officer" || u.role === "super" ? "#1a0f00" : u.role === "steward" ? "var(--gold)" : "var(--text3)", background: u.role === "officer" || u.role === "super" ? "linear-gradient(135deg,#a06b18,#c9922a)" : u.role === "steward" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.05)", padding: "3px 8px", borderRadius: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>{u.role || "member"}</div>
+                {isBanned && <div style={{ ...f(9, 700), color: "var(--red)", background: "rgba(192,57,43,0.12)", padding: "3px 8px", borderRadius: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>BANNED</div>}
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 <button onClick={() => { setProfileUserId(u.uid); setShowProfile(true); }} style={{ padding: "7px 10px", background: "rgba(201,146,42,0.15)", border: "1px solid rgba(201,146,42,0.3)", borderRadius: 6, color: "var(--gold)", ...f(10, 700), cursor: "pointer" }}>VIEW PROFILE</button>
                 <button onClick={() => { setConfirmModal({ title: `Demote ${u.name} to Member?`, message: "They will lose steward/officer privileges.", danger: true, onConfirm: async () => { await updateUserRole(u.uid, "member"); setAdminEmails(prev => prev.filter(e => e !== u.email)); setToastMsg({ message: `${u.name} demoted to Member` }); } }); }} style={{ padding: "7px 10px", background: u.role === "member" || !u.role ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.03)", border: u.role === "member" || !u.role ? "1px solid rgba(201,146,42,0.3)" : "1px solid var(--seam)", borderRadius: 6, color: u.role === "member" || !u.role ? "var(--gold)" : "var(--text3)", ...f(10, 700), cursor: "pointer" }}>MEMBER</button>
                 <button onClick={() => { setConfirmModal({ title: `Promote ${u.name} to Steward?`, message: "They will be able to approve members, update seniority, and moderate The Floor.", onConfirm: async () => { await updateUserRole(u.uid, "steward"); setToastMsg({ message: `${u.name} is now a Steward` }); } }); }} style={{ padding: "7px 10px", background: u.role === "steward" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.03)", border: u.role === "steward" ? "1px solid rgba(201,146,42,0.3)" : "1px solid var(--seam)", borderRadius: 6, color: u.role === "steward" ? "var(--gold)" : "var(--text3)", ...f(10, 700), cursor: "pointer" }}>STEWARD</button>
                 <button onClick={() => { setConfirmModal({ title: `Promote ${u.name} to Officer?`, message: "They will have full admin access.", onConfirm: async () => { await updateUserRole(u.uid, "officer"); setAdminEmails(prev => prev.includes(u.email) ? prev : [...prev, u.email]); setToastMsg({ message: `${u.name} is now an Officer` }); } }); }} style={{ padding: "7px 10px", background: u.role === "officer" || u.role === "super" ? "rgba(201,146,42,0.15)" : "rgba(255,255,255,0.03)", border: u.role === "officer" || u.role === "super" ? "1px solid rgba(201,146,42,0.3)" : "1px solid var(--seam)", borderRadius: 6, color: u.role === "officer" || u.role === "super" ? "var(--gold)" : "var(--text3)", ...f(10, 700), cursor: "pointer" }}>OFFICER</button>
+                {isBanned ? (
+                  <button onClick={() => handleUnbanUser(u.name)} style={{ padding: "7px 10px", background: "rgba(45,122,79,0.1)", border: "1px solid var(--green)", borderRadius: 6, color: "var(--green)", ...f(10, 700), cursor: "pointer" }}>UNBAN</button>
+                ) : (
+                  <button onClick={() => handleBanUser(u.name)} style={{ padding: "7px 10px", background: "rgba(232,122,122,0.08)", border: "1px solid rgba(232,122,122,0.4)", borderRadius: 6, color: "#e87a7a", ...f(10, 700), cursor: "pointer" }}>BAN</button>
+                )}
                 <button onClick={() => { setConfirmModal({ title: `Reset password for ${u.name}?`, message: `A reset link will be sent to ${u.email}.`, onConfirm: async () => { try { await sendPasswordResetToUser(u.email); setToastMsg({ message: `Reset email sent to ${u.email}` }); } catch(e) { setToastMsg({ message: "Error: " + e.message }); } } }); }} style={{ padding: "7px 10px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--seam)", borderRadius: 6, color: "var(--text2)", ...f(10, 700), cursor: "pointer" }}>RESET PW</button>
                 <button onClick={() => { setConfirmModal({ title: `Delete ${u.name}'s account?`, message: "This will remove their profile from the app. This cannot be undone.", danger: true, onConfirm: async () => { try { await deleteUserProfile(u.uid); setToastMsg({ message: `${u.name}'s profile deleted` }); } catch(e) { setToastMsg({ message: "Error: " + e.message }); } } }); }} style={{ padding: "7px 10px", background: "rgba(192,57,43,0.1)", border: "1px solid rgba(192,57,43,0.3)", borderRadius: 6, color: "var(--red)", ...f(10, 700), cursor: "pointer" }}>DELETE</button>
               </div>
             </div>
-          ))}
+          );})}
           {allApprovedUsers.length === 0 && <div style={{ ...card({ padding: "16px" }), ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>No approved members yet.</div>}
         </>
       )}
