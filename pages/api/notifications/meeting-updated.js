@@ -1,8 +1,10 @@
 // pages/api/notifications/meeting-updated.js
-// Called when admin clicks "Send Notification" for a meeting update.
-// Uses notifyAll from lib/notify.js — the same proven path as all other notifications.
+// Called when admin saves meeting info.
+// Fires the immediate "meeting saved" push AND schedules the 1-week / 1-day /
+// 2-hour / starting-now reminder cascade. The cron at /api/cron/meeting-reminders
+// actually delivers the scheduled reminders.
 
-const { notifyAll } = require("../../../lib/notify");
+const { onMeetingUpdated } = require("../../../lib/meetingNotifications");
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -16,27 +18,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Date and time are required" });
     }
 
-    // Build a readable notification body
-    const meetingTitle = title || "Union Meeting";
-    const dateStr = new Date(date + "T00:00:00").toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-    });
+    await onMeetingUpdated({ title, date, time, location, zoomId, zoomPasscode, zoomLink });
 
-    let body = dateStr + " at " + time;
-    if (location) body += " — " + location;
-    if (zoomId) body += " | Zoom ID: " + zoomId;
-
-    // Send push notification to all members via the existing send endpoint
-    await notifyAll({
-      title: "Union Meeting Updated",
-      body,
-      type: "meeting",
-      url: "/",
-    });
-
-    return res.status(200).json({ success: true, message: "Notification sent" });
+    return res.status(200).json({ success: true, message: "Notification sent and reminders scheduled" });
   } catch (err) {
     console.error("[meeting-updated] Error:", err);
     return res.status(500).json({ error: "Failed to send notification" });

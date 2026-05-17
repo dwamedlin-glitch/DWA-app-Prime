@@ -289,7 +289,7 @@ export default function DWAApp() {
     } else if (t === "announcement") {
       setTab("announcements");
     } else if (t === "meeting") {
-      setTab("home"); // next meeting card lives on home
+      setTab("zoom"); // Zoom tab has the next-meeting card, Join Zoom, and Add to Calendar
     } else if (t === "vote") {
       setTab("announcements");
     }
@@ -2146,7 +2146,7 @@ export default function DWAApp() {
           {!tabDataLoading && tab === "grievance" && <GrievanceExt ctx={{ card, col, f, inp, btnGold, btnOutline, lbl, SectionIcon, grievanceSubmitted, grievanceError, incidentDate, setIncidentDate, supervisorName, setSupervisorName, incidentTime, setIncidentTime, description, setDescription, remedy, setRemedy, witnesses, setWitnesses, contractArticle, setContractArticle, shakeKey, handleGrievance, resetGrievance }} />}
           {!tabDataLoading && tab === "documents" && <DocumentsExt ctx={{ card, col, row, f, inp, SectionIcon, documents, filteredDocs, docSearch, setDocSearch, docCat, setDocCat, allDocCategories, docFileIcon, setSub }} />}
           {!tabDataLoading && tab === "announcements" && <AnnouncementsExt ctx={{ col, f, card, annLang, setAnnLang, announcements, setSub }} />}
-          {!tabDataLoading && tab === "zoom" && <ZoomExt ctx={{ col, card, row, f, SectionIcon, zoomInfo, setToastMsg }} />}
+          {!tabDataLoading && tab === "zoom" && <ZoomExt ctx={{ col, card, row, f, SectionIcon, zoomInfo, nextMeeting, setToastMsg }} />}
           {!tabDataLoading && tab === "minutes" && <MinutesExt ctx={{ card, f, row, minLang, setMinLang, minutes }} />}
           {!tabDataLoading && tab === "seniority" && <SeniorityExt ctx={{ seniority, seniorityFilter, setSeniorityFilter, card, f }} />}
           {!tabDataLoading && tab === "admin" && !adminSection && <AdminLandingExt ctx={{ card, col, f, SectionIcon, pendingMembers, setAdminSection, isSteward, isSuper, bannedUsers, grievances, tileStyle, tileIconStyle }} />}
