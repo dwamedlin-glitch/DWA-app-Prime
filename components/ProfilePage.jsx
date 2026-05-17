@@ -276,7 +276,13 @@ export default function ProfilePage({ onBack, userId }) {
 
           <div style={styles.fieldGroup}>
             <label style={styles.label}>Work Location</label>
-            {readOnly ? <div style={styles.inputReadonly}>{location || "—"}</div> : <input style={styles.input} value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Florence" />}
+            {readOnly ? <div style={styles.inputReadonly}>{location || "—"}</div> : (
+              <select style={{ ...styles.input, appearance: "menulist" }} value={location || ""} onChange={e => setLocation(e.target.value)}>
+                <option value="">Select location…</option>
+                <option value="Jersey City">Jersey City</option>
+                <option value="Florence">Florence</option>
+              </select>
+            )}
           </div>
         </div>
 

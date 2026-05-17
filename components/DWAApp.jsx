@@ -180,7 +180,7 @@ export default function DWAApp() {
   const [floorEditText, setFloorEditText] = useState("");
   const floorEditRef = useRef(null);
   const currentUserName = userProfile?.name || regName || email.split("@")[0] || "Member";
-  const currentUserLocation = userProfile?.location || "Jersey City";
+  const currentUserLocation = userProfile?.location || "";
   const currentUserRole = isAdmin ? "officer" : (userProfile?.role === "steward" ? "steward" : "member");
   const isCurrentUserBanned = bannedUsers.some(b => b.name === currentUserName);
 
@@ -1854,6 +1854,7 @@ export default function DWAApp() {
   };
 
   const LocationTag = ({ loc }) => {
+    if (!loc) return null;
     const isFlorence = loc === "Florence";
     return <span style={{ ...f(9, 600), color: isFlorence ? "#7ab87a" : "#9b8ec4", background: isFlorence ? "#1a2a1a" : "#1f1a2a", padding: "1px 7px", borderRadius: 10, letterSpacing: ".03em" }}>{isFlorence ? "FLR" : "JC"}</span>;
   };
@@ -1948,6 +1949,7 @@ export default function DWAApp() {
     try {
       await addFloorReply(postId, {
         author: currentUserName,
+        uid: currentUid,
         location: currentUserLocation,
         role: currentUserRole,
         text,
