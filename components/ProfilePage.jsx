@@ -200,8 +200,14 @@ export default function ProfilePage({ onBack, userId }) {
   }
 
   function getRoleBadgeStyle(role) {
+    if (role === "super") {
+      return { ...styles.roleBadge, background: "linear-gradient(135deg,#a06b18,#c9922a)", color: "#1a1208", border: "none" };
+    }
     if (role === "admin" || role === "officer") {
-      return { ...styles.roleBadge, background: "rgba(201,146,42,0.2)", color: GOLD, border: `1px solid ${SEAM}` };
+      return { ...styles.roleBadge, background: "rgba(201,162,39,0.2)", color: GOLD, border: `1px solid ${SEAM}` };
+    }
+    if (role === "steward") {
+      return { ...styles.roleBadge, background: "rgba(232,184,75,0.15)", color: "#e8b84b", border: `1px solid rgba(232,184,75,0.3)` };
     }
     return { ...styles.roleBadge, background: "rgba(255,255,255,0.06)", color: TEXT_DIM, border: `1px solid rgba(255,255,255,0.1)` };
   }

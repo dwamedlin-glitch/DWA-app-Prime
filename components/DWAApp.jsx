@@ -87,16 +87,11 @@ export default function DWAApp() {
   const [activeArticle, setActiveArticle] = useState(null);
   const [activeBylawArticle, setActiveBylawArticle] = useState(null);
   const [lang, setLang] = useState("en");
-  const [issueType, setIssueType] = useState("");
   const [incidentDate, setIncidentDate] = useState("");
-  const [incidentTime, setIncidentTime] = useState("");
-  const [incidentLocation, setIncidentLocation] = useState("");
-  const [supervisorName, setSupervisorName] = useState("");
   const [witnesses, setWitnesses] = useState("");
   const [description, setDescription] = useState("");
   const [remedy, setRemedy] = useState("");
-  const [contractArticle, setContractArticle] = useState("");
-  const [priorGrievance, setPriorGrievance] = useState(false);
+  const [contractArticle, setContractArticle] = useState(""); // stores Signature field
   const [grievanceError, setGrievanceError] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -593,7 +588,8 @@ export default function DWAApp() {
       setUserProfile(profile);
       setCurrentUserEmail(e);
       if (e === SUPER_ADMIN_EMAIL) setRole("super");
-      else if (adminEmails.map(a => a.toLowerCase()).includes(e)) setRole("admin");
+      else if (profile?.role === "super") setRole("super");
+      else if (adminEmails.map(a => a.toLowerCase()).includes(e) || profile?.role === "officer" || profile?.role === "admin") setRole("admin");
       else if (profile?.role === "steward") setRole("steward");
       else setRole("member");
       setLoggedIn(true);
@@ -679,7 +675,7 @@ export default function DWAApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: "New Grievance Submitted",
-          body: `${who}${issueType ? " · " + issueType : ""} — ${summary}`,
+          body: `${who} — ${summary}`,
           type: "grievance",
           url: "/",
           targetRole: "officer",
@@ -692,9 +688,8 @@ export default function DWAApp() {
   };
 
   const resetGrievance = () => {
-    setGrievanceSubmitted(false); setIssueType(""); setDescription(""); setIncidentDate("");
-    setIncidentTime(""); setIncidentLocation(""); setSupervisorName(""); setWitnesses("");
-    setRemedy(""); setContractArticle(""); setPriorGrievance(false); setGrievanceError(false);
+    setGrievanceSubmitted(false); setDescription(""); setIncidentDate("");
+    setWitnesses(""); setRemedy(""); setContractArticle(""); setGrievanceError(false);
   };
 
   // ── Save documents to Firestore ──
@@ -773,13 +768,13 @@ export default function DWAApp() {
     }
     if (editAnnId) {
       setAnnouncements(prev => {
-        const updated = prev.map(a => a.id === editAnnId ? { ...a, title: annTitle, body: annBody, titleEs, bodyEs, urgent: annUrgent } : a);
+        const updated = prev.map(a => a.id === editAnnId ? { ...a, title: annTitle, body: annBody, titleEs, bodyEs, urgent: annUrgent, updatedAt: Date.now() } : a);
         saveAnnouncements(updated);
         return updated;
       });
       setEditAnnId(null);
     } else {
-      const newAnn = { id: Date.now(), title: annTitle, body: annBody, titleEs, bodyEs, urgent: annUrgent };
+      const newAnn = { id: Date.now(), title: annTitle, body: annBody, titleEs, bodyEs, urgent: annUrgent, postedAt: Date.now() };
       setAnnouncements(prev => { const updated = [newAnn, ...prev]; saveAnnouncements(updated); return updated; });
     }
     setAnnPosted(true);
@@ -2143,7 +2138,7 @@ export default function DWAApp() {
           {tabDataLoading && tab === "admin" && <div className="rise" style={{ padding: 16 }}><SkeletonGrid count={8} /></div>}
           {!tabDataLoading && tab === "home" && <HomeScreenExt ctx={{ card, col, row, f, SectionIcon, LOGO_B64, showInstallBanner, setShowInstallBanner, showIOSInstallGuide, setShowIOSInstallGuide, handleInstallClick, nextMeeting, setTab, setSub, tileStyle, tileIconStyle, hasOfficialAccess, isSuper, role, currentUserName, setAdminSection, pendingMembers, grievances, floorPosts, allApprovedUsers, adminEmails, documents, bannedUsers, announcements, minutes }} />}
           {!tabDataLoading && tab === "theFloor" && <TheFloorExt ctx={{ card, col, row, f, inp, btnGold, SectionIcon, darkMode, floorPosts, floorLoading, floorReplyTo, setFloorReplyTo, bannedUsers, floorPhoto, setFloorPhoto, floorPhotoPreview, setFloorPhotoPreview, floorPosting, floorPostRef, floorReplyRef, floorPhotoRef, isCurrentUserBanned, currentUserName, currentUid, isAdmin, isSteward, handleFloorPost, handleFloorPhotoSelect, handleFloorReply, handleBanUser, handleFloorDelete, getInitials, formatFloorTime, RoleBadge, LocationTag, startFloorEdit, SkeletonList }} />}
-          {!tabDataLoading && tab === "grievance" && <GrievanceExt ctx={{ card, col, f, inp, btnGold, btnOutline, lbl, SectionIcon, grievanceSubmitted, grievanceError, incidentDate, setIncidentDate, supervisorName, setSupervisorName, incidentTime, setIncidentTime, description, setDescription, remedy, setRemedy, witnesses, setWitnesses, contractArticle, setContractArticle, shakeKey, handleGrievance, resetGrievance }} />}
+          {!tabDataLoading && tab === "grievance" && <GrievanceExt ctx={{ card, col, f, inp, btnGold, btnOutline, lbl, SectionIcon, grievanceSubmitted, grievanceError, incidentDate, setIncidentDate, description, setDescription, remedy, setRemedy, witnesses, setWitnesses, contractArticle, setContractArticle, shakeKey, handleGrievance, resetGrievance }} />}
           {!tabDataLoading && tab === "documents" && <DocumentsExt ctx={{ card, col, row, f, inp, SectionIcon, documents, filteredDocs, docSearch, setDocSearch, docCat, setDocCat, allDocCategories, docFileIcon, setSub }} />}
           {!tabDataLoading && tab === "announcements" && <AnnouncementsExt ctx={{ col, f, card, annLang, setAnnLang, announcements, setSub }} />}
           {!tabDataLoading && tab === "zoom" && <ZoomExt ctx={{ col, card, row, f, SectionIcon, zoomInfo, nextMeeting, setToastMsg }} />}

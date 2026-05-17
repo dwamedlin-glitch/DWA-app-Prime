@@ -42,7 +42,16 @@ export default function HomeScreen({ ctx }) {
     return t > Date.now() - 24 * 60 * 60 * 1000;
   });
   const memberCount = (allApprovedUsers || []).length;
-  const officialCount = 1 + ((adminEmails || []).length) + ((allApprovedUsers || []).filter(u => u.role === "steward").length);
+  // Dedupe officials (officers + stewards + super) by email so people don't get
+  // double-counted across the profile-role list and the adminEmails whitelist.
+  const officialEmails = new Set();
+  (allApprovedUsers || []).forEach(u => {
+    if (["officer", "super", "admin", "steward"].includes(u.role)) {
+      if (u.email) officialEmails.add(u.email.toLowerCase());
+    }
+  });
+  (adminEmails || []).forEach(e => { if (e) officialEmails.add(e.toLowerCase()); });
+  const officialCount = officialEmails.size;
   const docCount = (documents || []).length;
   const daysToMeeting = (() => {
     if (!nextMeeting || !nextMeeting.date) return null;

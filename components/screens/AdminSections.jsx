@@ -200,7 +200,7 @@ export default function AdminSections({ section, ctx }) {
             </div>
           ))}
           {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>✓ Saved!</div>}
-          <button style={btnGold()} onClick={async () => { const info = { ...editMeeting }; setNextMeeting(info); saveMeetingInfo(info); saveFlash(() => {}); try { await fetch('/api/notifications/meeting-updated', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: info.title || 'Union Meeting', date: info.date, time: info.time, location: info.location || '', zoomId: zoomInfo?.id || '', zoomPasscode: zoomInfo?.passcode || '', zoomLink: zoomInfo?.link || '' }) }); setToastMsg({ message: "Meeting saved · members notified" }); } catch(e) { console.log('Meeting notification failed:', e); setToastMsg({ message: "Meeting saved (notification failed)" }); } }}>SAVE MEETING INFO</button>
+          <button style={btnGold()} onClick={async () => { const info = { ...editMeeting }; setNextMeeting(info); saveMeetingInfo(info); saveFlash(() => {}); try { await fetch('/api/notifications/meeting-updated', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: info.title || 'Union Meeting', date: info.date, time: info.time, location: info.location || '', zoomId: zoomInfo?.meetingId || zoomInfo?.id || '', zoomPasscode: zoomInfo?.passcode || '', zoomLink: zoomInfo?.link || '' }) }); setToastMsg({ message: "Meeting saved · members notified" }); } catch(e) { console.log('Meeting notification failed:', e); setToastMsg({ message: "Meeting saved (notification failed)" }); } }}>SAVE MEETING INFO</button>
           <button
             onClick={async () => {
               const info = { ...editMeeting };
@@ -275,13 +275,13 @@ export default function AdminSections({ section, ctx }) {
               setTranslating(false);
               if (editMinId) {
                 setMinutes(prev => {
-                  const updated = prev.map(m => m.id === editMinId ? { ...m, title: newMinTitle, date: newMinDate, summary: newMinSummary, titleEs, summaryEs } : m);
+                  const updated = prev.map(m => m.id === editMinId ? { ...m, title: newMinTitle, date: newMinDate, summary: newMinSummary, titleEs, summaryEs, updatedAt: Date.now() } : m);
                   saveMinutesFn(updated);
                   return updated;
                 });
                 setEditMinId(null);
               } else {
-                setMinutes(prev => { const updated = [{ id: Date.now(), title: newMinTitle, date: newMinDate, summary: newMinSummary, titleEs, summaryEs }, ...prev]; saveMinutesFn(updated); return updated; });
+                setMinutes(prev => { const updated = [{ id: Date.now(), title: newMinTitle, date: newMinDate, summary: newMinSummary, titleEs, summaryEs, postedAt: Date.now() }, ...prev]; saveMinutesFn(updated); return updated; });
               }
               setNewMinTitle(""); setNewMinDate(""); setNewMinSummary("");
               saveFlash(() => { });
@@ -422,6 +422,7 @@ export default function AdminSections({ section, ctx }) {
                 desc: newDocDesc || undefined,
                 fileUrl,
                 fileType,
+                uploadedAt: Date.now(),
               };
               setDocuments(prev => {
                 const updated = [...prev, newDoc];
@@ -843,12 +844,19 @@ function UserAdminPanel({ ctx }) {
             <div style={col(5)}><input style={inp()} value={newAdminEmail} onChange={e => setNewAdminEmail(e.target.value)} placeholder="official@dwa.org" /></div>
             {adminMgmtError && <div style={{ ...f(12, 400, 'serif'), color: "var(--red)", fontStyle: "italic" }}>{adminMgmtError}</div>}
             {adminSaved && <div style={{ ...f(12, 600), color: "var(--green)" }}>✓ Saved!</div>}
-            <button style={btnGold(!newAdminEmail.trim())} disabled={!newAdminEmail.trim()} onClick={() => {
+            <button style={btnGold(!newAdminEmail.trim())} disabled={!newAdminEmail.trim()} onClick={async () => {
               const e = newAdminEmail.toLowerCase().trim();
               if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) { setAdminMgmtError("Invalid email."); return; }
               if (e === SUPER_ADMIN_EMAIL) { setAdminMgmtError("That's the super admin."); return; }
               if (adminEmails.map(a => a.toLowerCase()).includes(e)) { setAdminMgmtError("Already an official."); return; }
-              setAdminEmails(prev => [...prev, e]); setNewAdminEmail(""); setAdminMgmtError(""); saveFlash(() => { });
+              setAdminEmails(prev => [...prev, e]);
+              // If this email matches an existing user profile, also flip their role to officer
+              // so the two sources of truth stay in sync.
+              const match = (allApprovedUsers || []).find(u => (u.email || "").toLowerCase() === e);
+              if (match && match.uid) {
+                try { await updateUserRole(match.uid, "officer"); } catch (err) { console.error("Sync role failed:", err); }
+              }
+              setNewAdminEmail(""); setAdminMgmtError(""); saveFlash(() => { });
             }}>PROMOTE TO OFFICER</button>
           </div>
           <div style={{ ...card({ padding: "16px" }), ...col(8) }}>
@@ -1053,7 +1061,6 @@ function GrievancesPanel({ ctx }) {
               </div>
               <div style={{ ...f(9, 700), color: statusColor(g.status), background: statusBg(g.status), padding: "3px 8px", borderRadius: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>{g.status || "new"}</div>
             </div>
-            {g.issueType && <div style={{ ...f(11, 700), color: "var(--gold)", letterSpacing: ".05em" }}>{g.issueType}</div>}
             <div style={{ ...f(12, 400, 'serif'), color: "var(--text2)", lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{g.description}</div>
             {(g.notes || []).length > 0 && (
               <div style={{ ...f(10, 600), color: "var(--text3)", letterSpacing: ".05em" }}>

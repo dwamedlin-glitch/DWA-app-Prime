@@ -11,11 +11,16 @@ export default function Seniority({ ctx }) {
 
   const filtered = seniority
     .filter(s => seniorityFilter === "All" || s.location === seniorityFilter)
-    .sort((a, b) => a.hireDate.localeCompare(b.hireDate));
+    .sort((a, b) => (a.hireDate || "").localeCompare(b.hireDate || ""));
   const fmtDate = d => {
-    const [y, m, day] = d.split("-");
+    if (!d) return "—";
+    // Prefer YYYY-MM-DD parsing; fall back to Date for other formats; fall back to raw on failure.
+    const m1 = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return `${months[parseInt(m, 10) - 1]} ${parseInt(day, 10)}, ${y}`;
+    if (m1) return `${months[parseInt(m1[2], 10) - 1]} ${parseInt(m1[3], 10)}, ${m1[1]}`;
+    const parsed = new Date(d);
+    if (!isNaN(parsed.getTime())) return `${months[parsed.getMonth()]} ${parsed.getDate()}, ${parsed.getFullYear()}`;
+    return String(d);
   };
   return (
     <div className="rise" style={{ padding: "14px", display: "flex", flexDirection: "column", gap: 10 }}>
