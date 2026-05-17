@@ -21,18 +21,26 @@ export default function Announcements({ ctx }) {
           ))}
         </div>
       </div>
-      {announcements.map(a => {
-        const displayTitle = annLang === "es" && a.titleEs ? a.titleEs : a.title;
-        const displayBody = annLang === "es" && a.bodyEs ? a.bodyEs : a.body;
-        return (
-          <div key={a.id} onClick={() => setSub({ type: "ann", data: a })} className="tile" style={{ ...card({ padding: "16px" }) }}>
-            {a.urgent && <div className="urgent-pulse" style={{ ...f(9, 700), color: "var(--gold)", background: "rgba(201,146,42,0.1)", padding: "2px 8px", borderRadius: 4, display: "inline-block", marginBottom: 8, letterSpacing: ".15em" }}>⚡ URGENT</div>}
-            <div style={{ ...f(16, 600), color: "var(--text)", lineHeight: 1.25 }}>{displayTitle}</div>
-            <div style={{ ...f(12, 400, 'serif'), color: "var(--text2)", marginTop: 8, lineHeight: 1.6 }}>{displayBody.length > 120 ? `${displayBody.slice(0, 120)}…` : displayBody}</div>
-            <div style={{ ...f(11, 700), color: "var(--gold)", marginTop: 12, letterSpacing: ".1em" }}>READ MORE →</div>
-          </div>
-        );
-      })}
+      {announcements.length === 0 ? (
+        <div style={{ ...card({ padding: "32px 20px" }), textAlign: "center" }}>
+          <div style={{ fontSize: 32, marginBottom: 10, opacity: 0.5 }}>📢</div>
+          <div style={{ ...f(14, 600), color: "var(--cream)", marginBottom: 4 }}>No announcements yet</div>
+          <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", lineHeight: 1.5 }}>When union leadership posts updates, they'll appear here.</div>
+        </div>
+      ) : (
+        announcements.map(a => {
+          const displayTitle = annLang === "es" && a.titleEs ? a.titleEs : a.title;
+          const displayBody = annLang === "es" && a.bodyEs ? a.bodyEs : a.body;
+          return (
+            <div key={a.id} onClick={() => setSub({ type: "ann", data: a })} className="tile" style={{ ...card({ padding: "16px" }) }}>
+              {a.urgent && <div className="urgent-pulse" style={{ ...f(9, 700), color: "var(--gold)", background: "rgba(201,146,42,0.1)", padding: "2px 8px", borderRadius: 4, display: "inline-block", marginBottom: 8, letterSpacing: ".15em" }}>⚡ URGENT</div>}
+              <div style={{ ...f(16, 600), color: "var(--text)", lineHeight: 1.25 }}>{displayTitle}</div>
+              <div style={{ ...f(12, 400, 'serif'), color: "var(--text2)", marginTop: 8, lineHeight: 1.6 }}>{(displayBody || "").length > 120 ? `${displayBody.slice(0, 120)}…` : (displayBody || "")}</div>
+              <div style={{ ...f(11, 700), color: "var(--gold)", marginTop: 12, letterSpacing: ".1em" }}>READ MORE →</div>
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }

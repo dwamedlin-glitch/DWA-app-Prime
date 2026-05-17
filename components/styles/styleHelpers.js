@@ -34,10 +34,11 @@ export const tileIconStyle = (darkMode) => darkMode ? {
 };
 
 export const inp = (err = false) => ({
+  // fontSize 16 prevents iOS Safari from auto-zooming on focus.
   width: "100%", padding: "12px 14px",
   background: "var(--leather3)",
   border: `1.5px solid ${err ? "var(--red)" : "var(--seam)"}`,
-  borderRadius: 8, color: "var(--text)", fontSize: 14,
+  borderRadius: 8, color: "var(--text)", fontSize: 16,
   fontFamily: "'Oswald', sans-serif", fontWeight: 400, outline: "none",
 });
 

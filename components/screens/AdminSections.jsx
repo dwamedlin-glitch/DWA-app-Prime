@@ -410,7 +410,7 @@ export default function AdminSections({ section, ctx }) {
                   fileUrl = await uploadDocumentFile(newDocFile.rawFile);
                 } catch (err) {
                   console.error("Upload failed:", err);
-                  alert("File upload failed. Please try again.");
+                  setToastMsg({ message: "File upload failed. Please try again." });
                   setNewDocUploading(false);
                   return;
                 }

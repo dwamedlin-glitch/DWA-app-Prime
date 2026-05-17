@@ -131,8 +131,10 @@ export default function DWAApp() {
   });
   const notifUnreadCount = notifInbox.filter(n => n.time > notifLastRead).length;
   const [documents, setDocuments] = useState(DOCUMENTS_DATA);
-  const [nextMeeting, setNextMeeting] = useState({ title: "Contract Ratification Vote", date: "May 15, 2026", location: "Union Hall", time: "6:00 PM" });
-  const [zoomInfo, setZoomInfo] = useState({ meetingId: "783 115 6878", passcode: "9cDtkC", link: "https://zoom.us/j/7831156878" });
+  // Default to blank — Firestore subscriptions will populate. Prevents a stale
+  // placeholder ("Next Meeting: today") from appearing during slow loads.
+  const [nextMeeting, setNextMeeting] = useState({ title: "", date: "", location: "", time: "" });
+  const [zoomInfo, setZoomInfo] = useState({ meetingId: "", passcode: "", link: "" });
   const [adminSection, setAdminSection] = useState(null);
   const [newDocName, setNewDocName] = useState("");
   const [newDocCat, setNewDocCat] = useState("Contract & Bylaws");
@@ -524,10 +526,11 @@ export default function DWAApp() {
     background: "rgba(139,94,16,0.08)", border: "1px solid rgba(139,94,16,0.18)",
   };
   const inp = (err = false) => ({
+    // fontSize 16 prevents iOS Safari from auto-zooming on focus.
     width: "100%", padding: "12px 14px",
     background: "var(--leather3)",
     border: `1.5px solid ${err ? "var(--red)" : "var(--seam)"}`,
-    borderRadius: 8, color: "var(--text)", fontSize: 14,
+    borderRadius: 8, color: "var(--text)", fontSize: 16,
     fontFamily: "'Oswald', sans-serif", fontWeight: 400, outline: "none",
   });
   const lbl = { ...f(10, 600), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".12em" };
@@ -2077,9 +2080,9 @@ export default function DWAApp() {
 
   const TABS = [
     { id: "home", label: "Home", icon: "home" },
+    { id: "announcements", label: "News", icon: "bell" },
+    { id: "theFloor", label: "Floor", icon: "message" },
     { id: "documents", label: "Docs", icon: "file" },
-    { id: "zoom", label: "Zoom", icon: "video" },
-    { id: "minutes", label: "Minutes", icon: "notes" },
     ...(hasOfficialAccess ? [{ id: "admin", label: "Officials", icon: "shield" }] : []),
   ];
 
@@ -2155,13 +2158,17 @@ export default function DWAApp() {
           <div style={{ display: "flex", padding: "6px 4px 10px" }}>
             {TABS.map(t => {
               const active = tab === t.id;
-              const hasBadge = t.id === "admin" && pendingMembers.length > 0;
+              // Officials badge counts all action-needed items (pending members + new grievances + banned users)
+              const officialsCount = t.id === "admin"
+                ? (pendingMembers.length + (grievances || []).filter(g => g.status === "new").length + (bannedUsers || []).length)
+                : 0;
+              const hasBadge = t.id === "admin" && officialsCount > 0;
               return (
                 <button key={t.id} className="tab-btn" onClick={() => { setTab(t.id); setAdminSection(null); }} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: "6px 4px", color: active ? "var(--gold)" : "var(--text3)", position: "relative" }}>
                   <div style={{ background: active ? "linear-gradient(135deg, rgba(201,146,42,0.2), rgba(201,146,42,0.05))" : "transparent", border: active ? "1px solid rgba(201,146,42,0.2)" : "1px solid transparent", borderRadius: 8, padding: 6, display: "flex", position: "relative" }}>
                     <SectionIcon icon={t.icon} size={20} />
                     {hasBadge && (
-                      <div className="urgent-pulse" style={{ position: "absolute", top: -2, right: -4, width: 16, height: 16, borderRadius: "50%", background: "var(--red)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", ...f(9, 800), border: "2px solid var(--leather)" }}>{pendingMembers.length}</div>
+                      <div className="urgent-pulse" style={{ position: "absolute", top: -2, right: -4, minWidth: 16, height: 16, borderRadius: 9, padding: "0 4px", background: "var(--red)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", ...f(9, 800), border: "2px solid var(--leather)" }}>{officialsCount > 9 ? "9+" : officialsCount}</div>
                     )}
                   </div>
                   <span style={{ fontFamily: "'Oswald',sans-serif", fontSize: 9, fontWeight: active ? 700 : 500, letterSpacing: ".06em", textTransform: "uppercase" }}>{t.label}</span>

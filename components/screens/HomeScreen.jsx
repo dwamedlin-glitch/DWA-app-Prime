@@ -302,8 +302,14 @@ export default function HomeScreen({ ctx }) {
           </div>
           <div>
             <div style={{ ...f(9, 700), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".15em" }}>Next Meeting</div>
-            <div style={{ ...f(15, 600), color: "var(--text)", marginTop: 2 }}>{nextMeeting.title}</div>
-            <div style={{ ...f(12, 400, 'serif'), color: "var(--gold)", marginTop: 2, fontStyle: "italic" }}>{nextMeeting.date} · {nextMeeting.time} · {nextMeeting.location}</div>
+            {nextMeeting && (nextMeeting.title || nextMeeting.date) ? (
+              <>
+                <div style={{ ...f(15, 600), color: "var(--text)", marginTop: 2 }}>{nextMeeting.title || "Union Meeting"}</div>
+                <div style={{ ...f(12, 400, 'serif'), color: "var(--gold)", marginTop: 2, fontStyle: "italic" }}>{[nextMeeting.date, nextMeeting.time, nextMeeting.location].filter(Boolean).join(" · ")}</div>
+              </>
+            ) : (
+              <div style={{ ...f(13, 400, 'serif'), color: "var(--text3)", marginTop: 4, fontStyle: "italic" }}>No meeting scheduled yet</div>
+            )}
           </div>
         </div>
       </div>
