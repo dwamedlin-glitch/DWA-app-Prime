@@ -31,6 +31,8 @@ export default function HomeScreen({ ctx }) {
     adminEmails,
     documents,
     bannedUsers,
+    announcements,
+    minutes,
   } = ctx;
 
   // Derived dashboard data (only meaningful when hasOfficialAccess)
@@ -79,6 +81,64 @@ export default function HomeScreen({ ctx }) {
     sub: "See what members are saying",
     action: () => setTab("theFloor"),
   });
+
+  // Recent activity feed — newest item from each source, up to 4 total
+  const recentActivity = [];
+  if (floorPosts && floorPosts.length > 0) {
+    const p = floorPosts[0];
+    recentActivity.push({
+      icon: "message", label: "The Floor",
+      title: `${p.author || "Member"} posted`,
+      preview: (p.text || "(photo)").slice(0, 60),
+      time: p.time || 0,
+      action: () => setTab("theFloor"),
+    });
+  }
+  if (announcements && announcements.length > 0) {
+    const a = announcements[0];
+    recentActivity.push({
+      icon: "bell", label: "Announcement",
+      title: a.title || "Announcement",
+      preview: (a.body || "").slice(0, 60),
+      time: a.postedAt || a.time || 0,
+      action: () => setTab("announcements"),
+    });
+  }
+  if (documents && documents.length > 0) {
+    const d = [...documents].sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0))[0];
+    recentActivity.push({
+      icon: "file", label: "Document",
+      title: d.name || "Document",
+      preview: d.category || "",
+      time: d.uploadedAt || 0,
+      action: () => setTab("documents"),
+    });
+  }
+  if (minutes && minutes.length > 0) {
+    const m = minutes[0];
+    recentActivity.push({
+      icon: "notes", label: "Meeting Minutes",
+      title: m.title || "Minutes",
+      preview: m.date || "",
+      time: m.postedAt || 0,
+      action: () => setTab("minutes"),
+    });
+  }
+  recentActivity.sort((a, b) => (b.time || 0) - (a.time || 0));
+  const recentTop = recentActivity.slice(0, 3);
+
+  const fmtRelativeTime = (ts) => {
+    if (!ts) return "";
+    const diff = Date.now() - ts;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
 
   return (
     <div className="rise">
@@ -199,6 +259,30 @@ export default function HomeScreen({ ctx }) {
               </div>
             </div>
           </div>
+
+          {/* Recent activity feed */}
+          {recentTop.length > 0 && (
+            <div style={{ background: "rgba(255,255,255,0.025)", border: "1px solid var(--seam)", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ ...f(9, 700), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".15em", marginBottom: 10 }}>Recent activity</div>
+              <div style={{ ...col(0) }}>
+                {recentTop.map((r, i) => (
+                  <div key={i} onClick={r.action} className="tile" style={{ display: "flex", gap: 12, padding: "10px 0", borderTop: i === 0 ? "none" : "1px solid var(--seam)", cursor: "pointer", alignItems: "center" }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(201,146,42,0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gold)", flexShrink: 0 }}>
+                      <SectionIcon icon={r.icon} size={15} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 6, justifyContent: "space-between" }}>
+                        <div style={{ ...f(9, 700), color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".08em" }}>{r.label}</div>
+                        <div style={{ ...f(10, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", flexShrink: 0 }}>{fmtRelativeTime(r.time)}</div>
+                      </div>
+                      <div style={{ ...f(13, 600), color: "var(--cream)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</div>
+                      {r.preview && <div style={{ ...f(11, 400, 'serif'), color: "var(--text2)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.preview}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
