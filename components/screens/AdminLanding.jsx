@@ -65,7 +65,6 @@ export default function AdminLanding({ ctx }) {
             {[
               { icon: "shield", label: "User Admin", action: () => setAdminSection("useradmin") },
               { icon: "shield", label: "Update Seniority", action: () => setAdminSection("seniority") },
-              ...(bannedUsers.length > 0 ? [{ icon: "x", label: `Banned (${bannedUsers.length})`, action: () => setAdminSection("banned") }] : []),
             ].map(qa => (
               <div key={qa.label} onClick={qa.action} className="tile" style={{ ...tileStyle(), borderRadius: 10, padding: "14px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center" }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, ...tileIconStyle(), display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gold)" }}>
@@ -137,7 +136,6 @@ export default function AdminLanding({ ctx }) {
           { icon: "phone", label: "DWA Contacts", action: () => setAdminSection("contacts") },
           { icon: "users", label: pendingMembers.length > 0 ? `User Admin (${pendingMembers.length})` : "User Admin", action: () => setAdminSection("useradmin") },
           { icon: "bell", label: "Send Notification", action: () => setAdminSection("broadcast") },
-          ...(bannedUsers.length > 0 ? [{ icon: "x", label: `Banned (${bannedUsers.length})`, action: () => setAdminSection("banned") }] : []),
         ].map(qa => (
           <div key={qa.label} onClick={qa.action} className="tile" style={{
             ...tileStyle(),

@@ -78,12 +78,6 @@ export default function HomeScreen({ ctx }) {
     sub: "Approve or deny new signups",
     action: () => { setTab("admin"); setAdminSection && setAdminSection("useradmin"); },
   });
-  if ((bannedUsers || []).length > 0) attentionCards.push({
-    icon: "x", color: "var(--red)", bg: "rgba(192,57,43,0.08)", border: "rgba(192,57,43,0.25)",
-    title: `${bannedUsers.length} banned user${bannedUsers.length === 1 ? "" : "s"}`,
-    sub: "Review or restore access",
-    action: () => { setTab("admin"); setAdminSection && setAdminSection("banned"); },
-  });
   if (todayPosts.length > 0) attentionCards.push({
     icon: "message", color: "var(--gold)", bg: "rgba(201,146,42,0.06)", border: "rgba(201,146,42,0.2)",
     title: `${todayPosts.length} post${todayPosts.length === 1 ? "" : "s"} on The Floor today`,

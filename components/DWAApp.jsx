@@ -2157,9 +2157,10 @@ export default function DWAApp() {
           <div style={{ display: "flex", padding: "6px 4px 10px" }}>
             {TABS.map(t => {
               const active = tab === t.id;
-              // Officials badge counts all action-needed items (pending members + new grievances + banned users)
+              // Officials badge counts action-needed items: pending members + new grievances.
+              // (Banned users are managed inline in User Admin, not a separate alert.)
               const officialsCount = t.id === "admin"
-                ? (pendingMembers.length + (grievances || []).filter(g => g.status === "new").length + (bannedUsers || []).length)
+                ? (pendingMembers.length + (grievances || []).filter(g => g.status === "new").length)
                 : 0;
               const hasBadge = t.id === "admin" && officialsCount > 0;
               return (
