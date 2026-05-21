@@ -885,7 +885,7 @@ export default function DWAApp() {
           <div style={{ ...f(13, 400, 'serif'), color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 20 }}>{confirmModal.message}</div>
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={() => setConfirmModal(null)} style={{ ...btnOutline, flex: 1, padding: "12px 16px" }}>Cancel</button>
-            <button onClick={() => { confirmModal.onConfirm(); setConfirmModal(null); }} style={{ flex: 1, padding: "12px 16px", borderRadius: 8, border: "none", background: confirmModal.danger ? "var(--red)" : "linear-gradient(135deg,#a06b18,#c9922a)", color: confirmModal.danger ? "#fff" : "#1a0f00", ...f(14, 400, 'bebas'), letterSpacing: ".1em", cursor: "pointer" }}>{confirmModal.danger ? "YES, DELETE" : "CONFIRM"}</button>
+            <button onClick={() => { confirmModal.onConfirm(); setConfirmModal(null); }} style={{ flex: 1, padding: "12px 16px", borderRadius: 8, border: "none", background: confirmModal.danger ? "var(--red)" : "linear-gradient(135deg,#a06b18,#c9922a)", color: confirmModal.danger ? "#fff" : "#1a0f00", ...f(14, 400, 'bebas'), letterSpacing: ".1em", cursor: "pointer" }}>{confirmModal.confirmLabel || (confirmModal.danger ? "YES, DELETE" : "CONFIRM")}</button>
           </div>
         </div>
       </div>
@@ -1963,6 +1963,7 @@ export default function DWAApp() {
       title: `Ban ${authorName}?`,
       message: `${authorName} will no longer be able to post on The Floor. They can still use the app. An officer can unban them later.`,
       danger: true,
+      confirmLabel: "YES, BAN",
       onConfirm: async () => {
         try {
           await banUser({ name: authorName, bannedBy: currentUserName });
