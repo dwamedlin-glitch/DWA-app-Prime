@@ -1089,6 +1089,22 @@ function GrievanceDetail({ ctx, grievance, onBack, fmtDate, statusColor, statusB
   // Backward-compat: older docs stored signature under contractArticle
   const signature = g.signature || g.contractArticle || "";
   const notes = (g.notes || []).slice().sort((a, b) => (b.time || 0) - (a.time || 0));
+  const attachments = g.attachments || [];
+
+  const [lightboxUrl, setLightboxUrl] = React.useState(null);
+  const fmtBytes = (n) => {
+    if (!n) return "";
+    if (n < 1024 * 1024) return (n / 1024).toFixed(0) + " KB";
+    return (n / (1024 * 1024)).toFixed(1) + " MB";
+  };
+  const attachmentKind = (a) => {
+    const t = (a.mimeType || "").toLowerCase();
+    if (t.startsWith("image/")) return "image";
+    if (t === "application/pdf") return "pdf";
+    if (t.startsWith("audio/")) return "audio";
+    if (t.startsWith("video/")) return "video";
+    return "file";
+  };
 
   const [noteText, setNoteText] = React.useState("");
   const [addingNote, setAddingNote] = React.useState(false);
@@ -1165,6 +1181,21 @@ function GrievanceDetail({ ctx, grievance, onBack, fmtDate, statusColor, statusB
       <h2>Signature</h2>
       <div class="sig">${esc(signature) || "—"}</div>
 
+      ${attachments.length > 0 ? (() => {
+        const imgs = attachments.filter(a => attachmentKind(a) === "image");
+        const others = attachments.filter(a => attachmentKind(a) !== "image");
+        let block = `<h2>Attachments (${attachments.length})</h2>`;
+        if (imgs.length > 0) {
+          block += `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px;">` +
+            imgs.map((a, i) => `<div><img src="${esc(a.url)}" alt="Exhibit ${i + 1}" style="width:100%;border:1px solid #333;border-radius:4px;" /><div style="font-size:10px;color:#666;margin-top:3px;">Exhibit ${String.fromCharCode(65 + i)} — ${esc(a.name)}</div></div>`).join("") + `</div>`;
+        }
+        if (others.length > 0) {
+          block += `<table style="margin-top:8px;"><tr><td style="padding:6px;border:1px solid #333;background:#f7f2e9;font-weight:600;font-size:12px;">Exhibit</td><td style="padding:6px;border:1px solid #333;background:#f7f2e9;font-weight:600;font-size:12px;">Description</td><td style="padding:6px;border:1px solid #333;background:#f7f2e9;font-weight:600;font-size:12px;">Type</td><td style="padding:6px;border:1px solid #333;background:#f7f2e9;font-weight:600;font-size:12px;">Size</td></tr>` +
+            others.map((a, i) => `<tr><td style="padding:6px;border:1px solid #333;font-size:12px;">${String.fromCharCode(65 + imgs.length + i)}</td><td style="padding:6px;border:1px solid #333;font-size:12px;">${esc(a.name)}</td><td style="padding:6px;border:1px solid #333;font-size:12px;text-transform:uppercase;">${esc(attachmentKind(a))}</td><td style="padding:6px;border:1px solid #333;font-size:12px;">${esc(fmtBytes(a.size))}</td></tr>`).join("") + `</table><div style="font-size:11px;color:#666;margin-top:6px;font-style:italic;">Original files on record with the Union.</div>`;
+        }
+        return block;
+      })() : ""}
+
       ${notes.length > 0 ? `<h2>Officer Notes (${notes.length})</h2>` + notes.map(n => `<div class="desc" style="margin-bottom:8px;"><div style="font-size:11px;color:#666;margin-bottom:4px;"><strong>${esc(n.author)}</strong> · ${esc(fmtDate(n.time))}</div>${esc(n.text)}</div>`).join("") : ""}
 
       <div class="footer">DWA Union · dwaunion.com · Reference ID: ${esc(g.id)}</div>
@@ -1234,6 +1265,53 @@ function GrievanceDetail({ ctx, grievance, onBack, fmtDate, statusColor, statusB
         </div>
       </div>
 
+      {/* Attachments — photos shown as a grid (tap to enlarge), audio/video inline, PDFs as links */}
+      {attachments.length > 0 && (
+        <div style={{ ...card({ padding: "16px" }), ...col(10) }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ ...f(11, 700), color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".1em" }}>Attachments</div>
+            <div style={{ ...f(11, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>{attachments.length}</div>
+          </div>
+          {/* Image grid */}
+          {(() => {
+            const images = attachments.filter(a => attachmentKind(a) === "image");
+            if (images.length === 0) return null;
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 8 }}>
+                {images.map((a, i) => (
+                  <div key={i} onClick={() => setLightboxUrl(a.url)} style={{ cursor: "pointer", borderRadius: 8, overflow: "hidden", border: "1px solid var(--seam)", background: "rgba(0,0,0,0.2)", aspectRatio: "1 / 1" }}>
+                    <img src={a.url} alt={a.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+          {/* Audio + video inline players */}
+          {attachments.filter(a => attachmentKind(a) === "audio").map((a, i) => (
+            <div key={"a" + i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--seam)", borderRadius: 8, padding: 10 }}>
+              <div style={{ ...f(12, 600), color: "var(--cream)", marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🎙 {a.name} <span style={{ ...f(10, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>· {fmtBytes(a.size)}</span></div>
+              <audio controls preload="metadata" src={a.url} style={{ width: "100%" }} />
+            </div>
+          ))}
+          {attachments.filter(a => attachmentKind(a) === "video").map((a, i) => (
+            <div key={"v" + i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--seam)", borderRadius: 8, padding: 10 }}>
+              <div style={{ ...f(12, 600), color: "var(--cream)", marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🎞 {a.name} <span style={{ ...f(10, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>· {fmtBytes(a.size)}</span></div>
+              <video controls preload="metadata" src={a.url} style={{ width: "100%", borderRadius: 4 }} />
+            </div>
+          ))}
+          {/* PDFs + other files as download rows */}
+          {attachments.filter(a => attachmentKind(a) === "pdf" || attachmentKind(a) === "file").map((a, i) => (
+            <a key={"p" + i} href={a.url} target="_blank" rel="noopener noreferrer" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--seam)", borderRadius: 8, padding: 12, display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+              <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(201,146,42,0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gold)", flexShrink: 0, ...f(18, 700) }}>PDF</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ ...f(13, 600), color: "var(--cream)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</div>
+                <div style={{ ...f(10, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>{fmtBytes(a.size)} · Tap to open</div>
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+
       {/* Notes thread */}
       <div style={{ ...card({ padding: "14px" }), ...col(10) }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -1280,7 +1358,14 @@ function GrievanceDetail({ ctx, grievance, onBack, fmtDate, statusColor, statusB
         <div style={{ ...f(11, 700), color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".1em" }}>Actions</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <button onClick={handlePrint} style={{ ...btnGold(), padding: "12px", ...f(12, 700), letterSpacing: ".08em" }}>PRINT</button>
-          <button onClick={() => { const subject = `Grievance from ${g.submitterName}`; const body = `Submitted ${fmtDate(g.submittedAtMs)}\n\nDate of Incident: ${g.incidentDate||"-"}\n\nExplanation:\n${g.description||""}\n\nProposed Solution:\n${g.remedy||"-"}\n\nWitness(es): ${g.witnesses||"-"}\n\nSignature: ${signature||"-"}`; window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`; }} style={{ padding: "12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid var(--seam)", color: "var(--cream)", ...f(12, 700), letterSpacing: ".08em", cursor: "pointer" }}>EMAIL</button>
+          <button onClick={() => {
+            const subject = `Grievance from ${g.submitterName}`;
+            let body = `Submitted ${fmtDate(g.submittedAtMs)}\n\nDate of Incident: ${g.incidentDate||"-"}\n\nExplanation:\n${g.description||""}\n\nProposed Solution:\n${g.remedy||"-"}\n\nWitness(es): ${g.witnesses||"-"}\n\nSignature: ${signature||"-"}`;
+            if (attachments.length > 0) {
+              body += `\n\nAttachments (${attachments.length}):\n` + attachments.map((a, i) => `  ${String.fromCharCode(65 + i)}. ${a.name} (${attachmentKind(a)}, ${fmtBytes(a.size)})\n     ${a.url}`).join("\n");
+            }
+            window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+          }} style={{ padding: "12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid var(--seam)", color: "var(--cream)", ...f(12, 700), letterSpacing: ".08em", cursor: "pointer" }}>EMAIL</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           <button onClick={() => setStatus("new")} disabled={g.status === "new"} style={{ padding: "10px", borderRadius: 8, background: g.status === "new" ? "rgba(192,57,43,0.15)" : "rgba(255,255,255,0.03)", border: g.status === "new" ? "1px solid var(--red)" : "1px solid var(--seam)", color: g.status === "new" ? "var(--red)" : "var(--text2)", ...f(11, 700), letterSpacing: ".05em", cursor: g.status === "new" ? "default" : "pointer" }}>NEW</button>
@@ -1289,6 +1374,14 @@ function GrievanceDetail({ ctx, grievance, onBack, fmtDate, statusColor, statusB
         </div>
         <button onClick={handleArchive} style={{ padding: "10px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid var(--seam)", color: "var(--text2)", ...f(11, 700), letterSpacing: ".05em", cursor: "pointer" }}>ARCHIVE</button>
       </div>
+
+      {/* Lightbox for full-size attachment images */}
+      {lightboxUrl && (
+        <div onClick={() => setLightboxUrl(null)} style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,0.92)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, cursor: "zoom-out" }}>
+          <img src={lightboxUrl} alt="Attachment" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: 4 }} />
+          <button onClick={(e) => { e.stopPropagation(); setLightboxUrl(null); }} style={{ position: "absolute", top: 16, right: 20, background: "rgba(255,255,255,0.15)", color: "#fff", border: "none", borderRadius: "50%", width: 36, height: 36, ...f(20, 400), cursor: "pointer" }}>×</button>
+        </div>
+      )}
     </div>
   );
 }

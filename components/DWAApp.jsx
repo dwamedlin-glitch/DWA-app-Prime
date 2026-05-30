@@ -1,6 +1,6 @@
 /* DWA v1.5.0 */
 import { useState, useEffect, useRef } from "react";
-import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, uploadDocumentFile, uploadFloorPhoto, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority, saveAdminEmails as fbSaveAdminEmails, loadAdminEmails as fbLoadAdminEmails, saveGrievance as fbSaveGrievance, subscribeToGrievances, updateGrievanceStatus, deleteGrievance, addGrievanceNote, removeGrievanceNote, registerUser, loginUser, logoutUser, onAuthChange, saveUserProfile, getUserProfile, subscribeToPendingMembers, approveMember, denyMember, subscribeToApprovedMembers, updateUserRole, deleteUserProfile, sendPasswordResetToUser } from "../lib/firebase";
+import { subscribeToFloorPosts, createFloorPost, deleteFloorPost, addFloorReply, deleteFloorReply, banUser, unbanUser, subscribeToBannedUsers, saveUploadedDocuments, loadUploadedDocuments, uploadDocumentFile, uploadFloorPhoto, saveAnnouncements as fbSaveAnnouncements, loadAnnouncements as fbLoadAnnouncements, saveStewards as fbSaveStewards, loadStewards as fbLoadStewards, saveMeetingInfo as fbSaveMeetingInfo, loadMeetingInfo as fbLoadMeetingInfo, saveZoomInfo as fbSaveZoomInfo, loadZoomInfo as fbLoadZoomInfo, saveMinutes as fbSaveMinutes, loadMinutes as fbLoadMinutes, saveSeniority as fbSaveSeniority, loadSeniority as fbLoadSeniority, saveAdminEmails as fbSaveAdminEmails, loadAdminEmails as fbLoadAdminEmails, saveGrievance as fbSaveGrievance, subscribeToGrievances, updateGrievanceStatus, deleteGrievance, addGrievanceNote, removeGrievanceNote, uploadGrievanceAttachment, deleteGrievanceAttachment, registerUser, loginUser, logoutUser, onAuthChange, saveUserProfile, getUserProfile, subscribeToPendingMembers, approveMember, denyMember, subscribeToApprovedMembers, updateUserRole, deleteUserProfile, sendPasswordResetToUser } from "../lib/firebase";
 import { getApp } from "firebase/app";
 import { getFirestore, doc, updateDoc } from "firebase/firestore";
 import ProfilePage from "./ProfilePage";
@@ -101,6 +101,10 @@ export default function DWAApp() {
   const [description, setDescription] = useState("");
   const [remedy, setRemedy] = useState("");
   const [contractArticle, setContractArticle] = useState(""); // stores Signature field
+  // Grievance attachments — staged client-side until submit, then uploaded to Storage.
+  const [grievanceFiles, setGrievanceFiles] = useState([]); // { file, previewUrl, kind }
+  const [grievanceUploading, setGrievanceUploading] = useState(false);
+  const [grievanceUploadProgress, setGrievanceUploadProgress] = useState({ done: 0, total: 0 });
   const [grievanceError, setGrievanceError] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -648,9 +652,63 @@ export default function DWAApp() {
     }
   };
 
+  // Compress a large image client-side before upload (max 1600px on the long edge,
+  // JPEG quality 0.85). Smaller files mean faster uploads and lower storage cost.
+  // Non-image files are returned as-is.
+  const compressIfImage = (file) => new Promise((resolve) => {
+    if (!file.type || !file.type.startsWith("image/") || file.type === "image/gif") {
+      resolve(file); return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1600;
+        let { width, height } = img;
+        if (width <= MAX && height <= MAX) { resolve(file); return; }
+        const scale = MAX / Math.max(width, height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (!blob) { resolve(file); return; }
+          const compressed = new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" });
+          resolve(compressed);
+        }, "image/jpeg", 0.85);
+      };
+      img.onerror = () => resolve(file);
+      img.src = ev.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+
   const handleGrievance = async () => {
     if (!incidentDate || !description.trim() || !contractArticle.trim()) {
       setGrievanceError(true); setShakeKey(k => k + 1); return;
+    }
+    // Upload any attached files first so the grievance carries their URLs.
+    let attachments = [];
+    if (grievanceFiles.length > 0) {
+      setGrievanceUploading(true);
+      setGrievanceUploadProgress({ done: 0, total: grievanceFiles.length });
+      try {
+        for (let i = 0; i < grievanceFiles.length; i++) {
+          const entry = grievanceFiles[i];
+          const prepared = await compressIfImage(entry.file);
+          const result = await uploadGrievanceAttachment(prepared);
+          attachments.push(result);
+          setGrievanceUploadProgress({ done: i + 1, total: grievanceFiles.length });
+        }
+      } catch (e) {
+        console.error("Attachment upload failed:", e);
+        setToastMsg({ message: "Failed to upload attachments. Try again." });
+        setGrievanceUploading(false);
+        return;
+      }
+      setGrievanceUploading(false);
     }
     const grievancePayload = {
       incidentDate,                 // Date of Incident
@@ -658,6 +716,7 @@ export default function DWAApp() {
       remedy,                       // Proposed Solution
       witnesses,                    // Witness(es)
       signature: contractArticle,   // Signature (stored under semantic key)
+      attachments,                  // [{ url, storagePath, name, size, mimeType, uploadedAt }]
       submitterUid: currentUid || null,
       submitterName: currentUserName || "Member",
       submitterEmail: currentUserEmail || "",
@@ -703,6 +762,9 @@ export default function DWAApp() {
   const resetGrievance = () => {
     setGrievanceSubmitted(false); setDescription(""); setIncidentDate("");
     setWitnesses(""); setRemedy(""); setContractArticle(""); setGrievanceError(false);
+    grievanceFiles.forEach(f => f.previewUrl && URL.revokeObjectURL(f.previewUrl));
+    setGrievanceFiles([]);
+    setGrievanceUploadProgress({ done: 0, total: 0 });
   };
 
   // ── Save documents to Firestore ──
@@ -2141,7 +2203,7 @@ export default function DWAApp() {
           {tabDataLoading && tab === "admin" && <div className="rise" style={{ padding: 16 }}><SkeletonGrid count={8} /></div>}
           {!tabDataLoading && tab === "home" && <HomeScreenExt ctx={{ card, col, row, f, SectionIcon, LOGO_B64, showInstallBanner, setShowInstallBanner, showIOSInstallGuide, setShowIOSInstallGuide, handleInstallClick, nextMeeting, setTab, setSub, tileStyle, tileIconStyle, hasOfficialAccess, isSuper, role, currentUserName, setAdminSection, pendingMembers, grievances, floorPosts, allApprovedUsers, adminEmails, documents, bannedUsers, announcements, minutes }} />}
           {!tabDataLoading && tab === "theFloor" && <TheFloorExt ctx={{ card, col, row, f, inp, btnGold, SectionIcon, darkMode, floorPosts, floorLoading, floorReplyTo, setFloorReplyTo, bannedUsers, floorPhoto, setFloorPhoto, floorPhotoPreview, setFloorPhotoPreview, floorPosting, floorPostRef, floorReplyRef, floorPhotoRef, isCurrentUserBanned, currentUserName, currentUid, isAdmin, isSteward, handleFloorPost, handleFloorPhotoSelect, handleFloorReply, handleBanUser, handleFloorDelete, getInitials, formatFloorTime, RoleBadge, LocationTag, startFloorEdit, SkeletonList }} />}
-          {!tabDataLoading && tab === "grievance" && <GrievanceExt ctx={{ card, col, f, inp, btnGold, btnOutline, lbl, SectionIcon, grievanceSubmitted, grievanceError, incidentDate, setIncidentDate, description, setDescription, remedy, setRemedy, witnesses, setWitnesses, contractArticle, setContractArticle, shakeKey, handleGrievance, resetGrievance }} />}
+          {!tabDataLoading && tab === "grievance" && <GrievanceExt ctx={{ card, col, row, f, inp, btnGold, btnOutline, lbl, SectionIcon, grievanceSubmitted, grievanceError, incidentDate, setIncidentDate, description, setDescription, remedy, setRemedy, witnesses, setWitnesses, contractArticle, setContractArticle, shakeKey, handleGrievance, resetGrievance, grievanceFiles, setGrievanceFiles, grievanceUploading, grievanceUploadProgress, setToastMsg }} />}
           {!tabDataLoading && tab === "documents" && <DocumentsExt ctx={{ card, col, row, f, inp, SectionIcon, documents, filteredDocs, docSearch, setDocSearch, docCat, setDocCat, allDocCategories, docFileIcon, setSub }} />}
           {!tabDataLoading && tab === "announcements" && <AnnouncementsExt ctx={{ col, f, card, annLang: lang, setAnnLang: setLang, announcements, setSub }} />}
           {!tabDataLoading && tab === "zoom" && <ZoomExt ctx={{ col, card, row, f, SectionIcon, zoomInfo, nextMeeting, setToastMsg }} />}
