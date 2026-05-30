@@ -127,36 +127,53 @@ export default function Zoom({ ctx }) {
           </button>
         </div>
       )}
-      <a href={zoomInfo.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "block", marginBottom: 14 }}>
-        <div style={{ background: "#2563a8", borderRadius: 10, padding: "18px", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, color: "#fff" }}>
-          <SectionIcon icon="video" size={20} />
-          <span style={{ ...f(20, 400, 'bebas'), color: "#fff", letterSpacing: ".1em" }}>CLICK TO JOIN ZOOM</span>
-        </div>
-      </a>
-      <div style={{ ...card({ padding: "20px" }), ...col(0) }}>
-        <div style={{ ...f(10, 700), color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".15em", marginBottom: 14 }}>Meeting Details</div>
-        {[
-          { label: "Meeting ID", value: zoomInfo.meetingId },
-          { label: "Passcode", value: zoomInfo.passcode },
-          { label: "Platform", value: "Zoom", color: "#2D8CFF" },
-        ].map(item => (
-          <div key={item.label} style={{ ...row("center", 0), justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--seam)" }}>
-            <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>{item.label}</div>
-            <div style={{ ...row("center", 8) }}>
-              <div style={{ ...f(15, 700), color: item.color || "var(--text)", letterSpacing: ".06em" }}>{item.value}</div>
-              {(item.label === "Meeting ID" || item.label === "Passcode") && (
-                <button onClick={() => { navigator.clipboard.writeText(String(item.value).replace(/ /g, "")); setToastMsg && setToastMsg({ message: `${item.label} copied` }); }} style={{ ...f(9, 700), color: "var(--gold)", background: "rgba(201,146,42,0.1)", border: "1px solid rgba(201,146,42,0.2)", borderRadius: 6, padding: "3px 8px", cursor: "pointer", letterSpacing: ".08em" }}>COPY</button>
-              )}
-            </div>
+      {/* JOIN ZOOM button — only render when there's actually a link.
+          An empty href would open a blank tab and look like a "logout". */}
+      {zoomInfo && zoomInfo.link ? (
+        <a href={zoomInfo.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "block", marginBottom: 14 }}>
+          <div style={{ background: "#2563a8", borderRadius: 10, padding: "18px", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, color: "#fff" }}>
+            <SectionIcon icon="video" size={20} />
+            <span style={{ ...f(20, 400, 'bebas'), color: "#fff", letterSpacing: ".1em" }}>CLICK TO JOIN ZOOM</span>
           </div>
-        ))}
-      </div>
-      <div style={{ ...card({ padding: "14px 16px", marginTop: 12, borderLeft: "3px solid var(--seam)" }), display: "flex", gap: 10 }}>
-        <div style={{ color: "var(--gold)", flexShrink: 0, marginTop: 1 }}><SectionIcon icon="info" size={16} /></div>
-        <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", lineHeight: 1.6, fontStyle: "italic" }}>
-          If the link doesn't open Zoom automatically, open the Zoom app and enter the Meeting ID and Passcode manually.
+        </a>
+      ) : (
+        <div style={{ ...card({ padding: "18px", marginBottom: 14, textAlign: "center" }) }}>
+          <div style={{ ...f(13, 400, 'serif'), color: "var(--text3)", fontStyle: "italic", lineHeight: 1.5 }}>
+            No Zoom room set up yet. An officer can add the meeting link in the Officials → Zoom Room screen.
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Meeting Details — hide entirely if there's no info to show */}
+      {zoomInfo && (zoomInfo.meetingId || zoomInfo.passcode) && (
+        <div style={{ ...card({ padding: "20px" }), ...col(0) }}>
+          <div style={{ ...f(10, 700), color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".15em", marginBottom: 14 }}>Meeting Details</div>
+          {[
+            { label: "Meeting ID", value: zoomInfo.meetingId },
+            { label: "Passcode", value: zoomInfo.passcode },
+            { label: "Platform", value: "Zoom", color: "#2D8CFF" },
+          ].filter(item => item.value).map(item => (
+            <div key={item.label} style={{ ...row("center", 0), justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--seam)" }}>
+              <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", fontStyle: "italic" }}>{item.label}</div>
+              <div style={{ ...row("center", 8) }}>
+                <div style={{ ...f(15, 700), color: item.color || "var(--text)", letterSpacing: ".06em" }}>{item.value}</div>
+                {(item.label === "Meeting ID" || item.label === "Passcode") && (
+                  <button onClick={() => { navigator.clipboard.writeText(String(item.value).replace(/ /g, "")); setToastMsg && setToastMsg({ message: `${item.label} copied` }); }} style={{ ...f(9, 700), color: "var(--gold)", background: "rgba(201,146,42,0.1)", border: "1px solid rgba(201,146,42,0.2)", borderRadius: 6, padding: "3px 8px", cursor: "pointer", letterSpacing: ".08em" }}>COPY</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {zoomInfo && zoomInfo.link && (
+        <div style={{ ...card({ padding: "14px 16px", marginTop: 12, borderLeft: "3px solid var(--seam)" }), display: "flex", gap: 10 }}>
+          <div style={{ color: "var(--gold)", flexShrink: 0, marginTop: 1 }}><SectionIcon icon="info" size={16} /></div>
+          <div style={{ ...f(12, 400, 'serif'), color: "var(--text3)", lineHeight: 1.6, fontStyle: "italic" }}>
+            If the link doesn't open Zoom automatically, open the Zoom app and enter the Meeting ID and Passcode manually.
+          </div>
+        </div>
+      )}
     </div>
   );
 }
